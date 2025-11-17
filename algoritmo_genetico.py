@@ -183,6 +183,47 @@ class AlgoritmoGenetico:
                 rota_filho[ponteiro_filho] = cidade_pai2
         
         return rota_filho
+    
+    def _crossover_pmx(self, pai1, pai2):
+        """
+        Executa o Partially-Mapped Crossover (PMX) para criar um filho.
+        """
+        # 
+        
+        # 1. Pega as rotas (listas) dos objetos Indivíduo
+        rota_pai1 = pai1.rota
+        rota_pai2 = pai2.rota
+        
+        # 2. Inicializa o filho como uma cópia do pai1
+        rota_filho = rota_pai1[:]
+        
+        # 3. Escolhe dois pontos de corte aleatórios
+        inicio, fim = sorted(random.sample(range(self.num_cidades), 2))
+        
+        # 4. Cria o "miolo" do pai2
+        fatia_pai2 = rota_pai2[inicio : fim + 1]
+
+        # 5. Cria o mapeamento de substituição
+        #    Ex: Se miolo_pai1 = [1, 2, 3] e miolo_pai2 = [4, 5, 6]
+        #    O mapeamento é: 1->4, 2->5, 3->6
+        mapeamento = {fatia_pai2[i]: rota_pai1[inicio + i] for i in range(len(fatia_pai2))}
+
+        # 6. Copia a fatia do pai2 para o filho
+        rota_filho[inicio : fim + 1] = fatia_pai2
+
+        # 7. Corrige duplicatas fora da fatia
+        for i in range(self.num_cidades):
+            # Se a posição ATUAL (i) está FORA do miolo que copiamos...
+            if not (inicio <= i <= fim):
+                # ...e a cidade nessa posição (do pai1) JÁ ESTÁ no miolo (fatia_pai2)...
+                while rota_filho[i] in fatia_pai2:
+                    # ...nós temos uma duplicata!
+                    # Usamos o mapeamento para encontrar o valor de substituição.
+                    # Ex: Se rota_filho[i] é '4', e '4' está na fatia,
+                    #    usamos o mapeamento (ex: 4->1) para substituí-lo.
+                    rota_filho[i] = mapeamento[rota_filho[i]]
+        
+        return rota_filho
 
     def _criar_populacao_inicial(self):
         """
@@ -260,6 +301,8 @@ class AlgoritmoGenetico:
                 # b. Crossover (Usa a configuração escolhida)
                 if self.metodo_crossover == 'ox':
                     rota_filho = self._crossover_ordenado(pai1, pai2)
+                elif self.metodo_crossover == 'pmx': # <-- ADICIONE ESTA LINHA
+                    rota_filho = self._crossover_pmx(pai1, pai2) # <-- ADICIONE ESTA LINHA
                 # (adicionar 'elif self.metodo_crossover == 'pmx' ...' aqui no futuro)
                 
                 # c. Mutação (Usa a configuração escolhida)
