@@ -16,55 +16,28 @@ from recozimento_simulado import RecozimentoSimulado
 #    executar qualquer uma das Análises do projeto.
 #
 # -----------------------------------------------------------------
-NUM_EXECUCOES = 30           # Número de execuções para robustez (conforme Análise 4)
-ARQUIVO_DADOS = "data/st70.tsp" # Base de dados a ser usada (st70, eil101, ch130)
-NUM_GERACOES = 200             # Critério de parada (AG, ACO)
-TAMANHO_POPULACAO = 50         # Tamanho da população (AG) / N° de formigas (ACO)
-
-# --- Lista de Experimentos para Executar ---
-# (Este é o único bloco que você precisa mudar para cada análise)
-
-# --- Lista de Experimentos para Executar ---
+# --- 1. CONFIGURAÇÕES GERAIS ---
+NUM_EXECUCOES = 30
+ARQUIVO_DADOS = "data/eil101.tsp" # <-- MUDANÇA
+NUM_GERACOES = 500               # <-- MUDANÇA (aumentado para um problema maior)
+TAMANHO_POPULACAO = 50         
 
 # --- Lista de Experimentos para Executar ---
 
-# Análise 4: Comparação de Taxas de Elitismo
+# Análise 5: Escalabilidade do AG (rodando o MELHOR AG na base eil101)
 experimentos_para_rodar = [
     {
-        "nome": "AG-Elitismo-0%",
+        "nome": "AG-MelhorConfig-eil101",
         "algoritmo": "AG",
         "params": {
-            "metodo_selecao": "torneio",    # (Constante)
-            "metodo_mutacao": "inversao",   # (Constante)
-            "taxa_elitismo": 0.0,           # <-- VARIÁVEL DE TESTE
-            "taxa_mutacao": 0.01,           # (Constante)
-            "metodo_crossover": "ox"        # (Constante)
-        }
-    },
-    {
-        "nome": "AG-Elitismo-5%",
-        "algoritmo": "AG",
-        "params": {
-            "metodo_selecao": "torneio",    # (Constante)
-            "metodo_mutacao": "inversao",   # (Constante)
-            "taxa_elitismo": 0.05,          # <-- VARIÁVEL DE TESTE
-            "taxa_mutacao": 0.01,           # (Constante)
-            "metodo_crossover": "ox"        # (Constante)
-        }
-    },
-    {
-        "nome": "AG-Elitismo-10%",
-        "algoritmo": "AG",
-        "params": {
-            "metodo_selecao": "torneio",    # (Constante)
-            "metodo_mutacao": "inversao",   # (Constante)
-            "taxa_elitismo": 0.1,           # <-- VARIÁVEL DE TESTE
-            "taxa_mutacao": 0.01,           # (Constante)
-            "metodo_crossover": "ox"        # (Constante)
+            "metodo_selecao": "torneio",    # (Vencedor da Análise 2)
+            "metodo_mutacao": "inversao",   # (Vencedor da Análise 3)
+            "taxa_elitismo": 0.05,          # (Vencedor da Análise 4)
+            "taxa_mutacao": 0.01,           # (Parâmetro padrão)
+            "metodo_crossover": "ox"        # (Parâmetro padrão)
         }
     }
 ]
-# -----------------------------------------------------------------
 
 # --- 2. CARREGAMENTO DOS DADOS ---
 print("Carregando dados do problema...")
