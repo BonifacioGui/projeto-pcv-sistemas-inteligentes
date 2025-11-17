@@ -24,28 +24,30 @@ TAMANHO_POPULACAO = 50         # Tamanho da população (AG) / N° de formigas (
 # --- Lista de Experimentos para Executar ---
 # (Este é o único bloco que você precisa mudar para cada análise)
 
-# Exemplo para Análise de Crossover (OX vs. PMX)
+# --- Lista de Experimentos para Executar ---
+
+# Análise 2: Comparação de Métodos de Seleção
 experimentos_para_rodar = [
     {
-        "nome": "AG-Crossover-OX",
+        "nome": "AG-Selecao-Torneio",
         "algoritmo": "AG",
         "params": {
-            "metodo_selecao": "torneio",
-            "metodo_mutacao": "inversao", # (Usando 'inversao' como padrão)
-            "taxa_elitismo": 0.05,
-            "taxa_mutacao": 0.01,
-            "metodo_crossover": "ox" # <-- USANDO OX
+            "metodo_selecao": "torneio", # <-- VARIÁVEL DE TESTE
+            "metodo_mutacao": "inversao",   # (Constante)
+            "taxa_elitismo": 0.05,          # (Constante)
+            "taxa_mutacao": 0.01,           # (Constante)
+            "metodo_crossover": "ox"        # (Constante)
         }
     },
     {
-        "nome": "AG-Crossover-PMX",
+        "nome": "AG-Selecao-Roleta",
         "algoritmo": "AG",
         "params": {
-            "metodo_selecao": "torneio",
-            "metodo_mutacao": "inversao", # (Usando 'inversao' como padrão)
-            "taxa_elitismo": 0.05,
-            "taxa_mutacao": 0.01,
-            "metodo_crossover": "pmx" # <-- USANDO PMX
+            "metodo_selecao": "roleta",  # <-- VARIÁVEL DE TESTE
+            "metodo_mutacao": "inversao",   # (Constante)
+            "taxa_elitismo": 0.05,          # (Constante)
+            "taxa_mutacao": 0.01,           # (Constante)
+            "metodo_crossover": "ox"        # (Constante)
         }
     }
 ]
