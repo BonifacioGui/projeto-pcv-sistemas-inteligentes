@@ -26,32 +26,44 @@ TAMANHO_POPULACAO = 50         # Tamanho da população (AG) / N° de formigas (
 
 # --- Lista de Experimentos para Executar ---
 
-# Análise 3: Comparação de Métodos de Mutação
+# --- Lista de Experimentos para Executar ---
+
+# Análise 4: Comparação de Taxas de Elitismo
 experimentos_para_rodar = [
     {
-        "nome": "AG-Mutacao-Troca",
+        "nome": "AG-Elitismo-0%",
         "algoritmo": "AG",
         "params": {
             "metodo_selecao": "torneio",    # (Constante)
-            "metodo_mutacao": "troca",    # <-- VARIÁVEL DE TESTE
-            "taxa_elitismo": 0.05,          # (Constante)
+            "metodo_mutacao": "inversao",   # (Constante)
+            "taxa_elitismo": 0.0,           # <-- VARIÁVEL DE TESTE
             "taxa_mutacao": 0.01,           # (Constante)
             "metodo_crossover": "ox"        # (Constante)
         }
     },
     {
-        "nome": "AG-Mutacao-Inversao",
+        "nome": "AG-Elitismo-5%",
         "algoritmo": "AG",
         "params": {
             "metodo_selecao": "torneio",    # (Constante)
-            "metodo_mutacao": "inversao", # <-- VARIÁVEL DE TESTE
-            "taxa_elitismo": 0.05,          # (Constante)
+            "metodo_mutacao": "inversao",   # (Constante)
+            "taxa_elitismo": 0.05,          # <-- VARIÁVEL DE TESTE
+            "taxa_mutacao": 0.01,           # (Constante)
+            "metodo_crossover": "ox"        # (Constante)
+        }
+    },
+    {
+        "nome": "AG-Elitismo-10%",
+        "algoritmo": "AG",
+        "params": {
+            "metodo_selecao": "torneio",    # (Constante)
+            "metodo_mutacao": "inversao",   # (Constante)
+            "taxa_elitismo": 0.1,           # <-- VARIÁVEL DE TESTE
             "taxa_mutacao": 0.01,           # (Constante)
             "metodo_crossover": "ox"        # (Constante)
         }
     }
 ]
-
 # -----------------------------------------------------------------
 
 # --- 2. CARREGAMENTO DOS DADOS ---
