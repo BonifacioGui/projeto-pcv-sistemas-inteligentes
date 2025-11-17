@@ -8,27 +8,18 @@ from colonia_formigas import ACO
 from recozimento_simulado import RecozimentoSimulado 
 
 # --- 1. DEFINIÇÃO DOS EXPERIMENTOS ---
-#
-#    Este é o seu novo "Painel de Controle".
-#    Basta adicionar ou remover dicionários desta lista para
-#    rodar diferentes análises.
-#
-# -----------------------------------------------------------------
 NUM_EXECUCOES = 30
 ARQUIVO_DADOS = "data/st70.tsp"
 NUM_GERACOES = 200      # (AG, ACO)
 TAMANHO_POPULACAO = 50  # (AG, ACO)
 
-# --- Lista de Experimentos para Executar ---
-
-# Exemplo para Análise 3: Mutação (Troca vs. Inversão)
 experimentos_para_rodar = [
     {
         "nome": "AG-Torneio-Troca",
         "algoritmo": "AG",
         "params": {
             "metodo_selecao": "torneio",
-            "metodo_mutacao": "troca", # <-- A MUDANÇA
+            "metodo_mutacao": "troca",
             "taxa_elitismo": 0.05,
             "taxa_mutacao": 0.01,
             "metodo_crossover": "ox"
@@ -39,22 +30,13 @@ experimentos_para_rodar = [
         "algoritmo": "AG",
         "params": {
             "metodo_selecao": "torneio",
-            "metodo_mutacao": "inversao", # <-- A MUDANÇA
+            "metodo_mutacao": "inversao",
             "taxa_elitismo": 0.05,
             "taxa_mutacao": 0.01,
             "metodo_crossover": "ox"
         }
     }
 ]
-
-# (Para rodar a Análise 2 (Seleção), você faria uma lista como acima,
-#  mas mudando 'metodo_selecao' entre 'torneio' e 'roleta')
-
-# (Para rodar a Análise 9 (Comparação Cruzada), sua lista seria:
-#  [ {"nome": "AG-Final", "algoritmo": "AG", ...},
-#    {"nome": "ACO-Final", "algoritmo": "ACO", ...},
-#    {"nome": "SA-Final", "algoritmo": "SA", ...} ]
-# )
 
 # -----------------------------------------------------------------
 
@@ -70,6 +52,10 @@ print("---------------------------------")
 resultados_para_boxplot = {}
 resultados_para_convergencia = {}
 
+# NOVO: Variáveis para guardar a MELHOR ROTA DE TODAS
+melhor_rota_geral = None
+melhor_distancia_geral = float('inf')
+
 for exp in experimentos_para_rodar:
     nome_exp = exp["nome"]
     algoritmo = exp["algoritmo"]
@@ -81,10 +67,11 @@ for exp in experimentos_para_rodar:
     historico_30_execucoes = []
     
     for i in range(NUM_EXECUCOES):
-        print(f"--- Execução {i + 1} de {NUM_EXECUCOES} ---", end="") # 'end=""' para log em uma linha
+        print(f"--- Execução {i + 1} de {NUM_EXECUCOES} ---", end="") 
         start_time = time.time()
         
         distancia_final = float('inf')
+        rota_final = []
         
         if algoritmo == "AG":
             params = exp["params"]
@@ -100,6 +87,7 @@ for exp in experimentos_para_rodar:
             )
             melhor_solucao = ag.executar() 
             distancia_final = melhor_solucao.distancia
+            rota_final = melhor_solucao.rota # Salva a rota
             historico_30_execucoes.append(ag.historico_melhores)
 
         elif algoritmo == "ACO":
@@ -107,17 +95,17 @@ for exp in experimentos_para_rodar:
                 cidades=minhas_cidades,
                 num_formigas=TAMANHO_POPULACAO,
                 num_iteracoes=NUM_GERACOES,
-                alfa=1.0, beta=5.0, rho=0.1, Q=100 # (Valores padrão)
+                alfa=1.0, beta=5.0, rho=0.1, Q=100
             )
-            _, distancia_final = aco.executar()
+            rota_final, distancia_final = aco.executar() # Salva a rota
             historico_30_execucoes.append(aco.historico_melhores)
 
         elif algoritmo == "SA":
             sa = RecozimentoSimulado(
                 cidades=minhas_cidades,
-                temp_inicial=10000, temp_final=1, taxa_resfriamento=0.995 # (Valores padrão)
+                temp_inicial=10000, temp_final=1, taxa_resfriamento=0.995
             )
-            _, distancia_final = sa.executar()
+            rota_final, distancia_final = sa.executar() # Salva a rota
             historico_30_execucoes.append(sa.historico_melhores)
         
         end_time = time.time()
@@ -125,6 +113,11 @@ for exp in experimentos_para_rodar:
         
         resultados_distancia.append(distancia_final)
         resultados_tempo.append(tempo_execucao)
+        
+        # NOVO: Verifica se esta é a melhor rota GERAL
+        if distancia_final < melhor_distancia_geral:
+            melhor_distancia_geral = distancia_final
+            melhor_rota_geral = rota_final
         
         print(f" -> Distância = {distancia_final:.2f} (Tempo: {tempo_execucao:.2f}s)")
 
@@ -150,5 +143,11 @@ for nome_exp, historico in resultados_para_convergencia.items():
 # 5.2. Gerar UM Boxplot comparando TODOS os experimentos
 nome_boxplot = "boxplot_comparativo.png"
 visualizacao.plotar_boxplot_comparativo(resultados_para_boxplot, nome_boxplot)
+
+# 5.3. NOVO: Gerar UM gráfico da MELHOR ROTA encontrada
+if melhor_rota_geral:
+    visualizacao.plotar_rota(melhor_rota_geral, minhas_cidades, "melhor_rota_geral.png")
+else:
+    print("Nenhuma rota foi gerada para plotar.")
 
 print("\nTodos os experimentos e gráficos foram concluídos.")

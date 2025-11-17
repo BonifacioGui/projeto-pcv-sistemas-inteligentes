@@ -101,3 +101,49 @@ def plotar_boxplot_comparativo(dados_experimentos, nome_arquivo="boxplot.png"):
     plt.close() # Fecha a figura para economizar memória
     
     print("Boxplot salvo com sucesso.")
+    
+def plotar_rota(melhor_rota, cidades, nome_arquivo="rota_final.png"):
+    """
+    Gera e salva um gráfico de dispersão (scatter plot) mostrando as
+    cidades e a melhor rota encontrada.
+
+    :param melhor_rota: Uma lista de índices (a permutação) da melhor rota.
+    :param cidades: A lista de tuplas de coordenadas (x, y).
+    :param nome_arquivo: Nome do arquivo para salvar o gráfico.
+    """
+    
+    print(f"\nGerando gráfico da melhor rota... salvando em {nome_arquivo}")
+
+    plt.figure(figsize=(12, 8))
+
+    # [Image of a TSP route visualization for 70 cities]
+    
+    # 1. Cria uma lista de coordenadas na ordem da melhor rota
+    rota_ordenada = [cidades[i] for i in melhor_rota]
+    
+    # Adiciona a cidade inicial ao final para fechar o loop
+    rota_ordenada.append(rota_ordenada[0])
+    
+    # 2. Pega as coordenadas X e Y separadamente
+    #    zip(*rota_ordenada) é um truque do Python para "descompactar"
+    #    a lista de tuplas [(x1,y1), (x2,y2)] em duas listas: [x1,x2] e [y1,y2]
+    coordenadas_x, coordenadas_y = zip(*rota_ordenada)
+
+    # 3. Plota as linhas da rota
+    plt.plot(coordenadas_x, coordenadas_y, marker='o', linestyle='-', markersize=5, label="Rota")
+    
+    # 4. Plota a cidade inicial (ponto vermelho)
+    plt.plot(coordenadas_x[0], coordenadas_y[0], 'ro', markersize=10, label="Cidade Inicial/Final")
+
+    # Configurações do gráfico
+    plt.title("Visualização da Melhor Rota Encontrada")
+    plt.xlabel("Coordenada X")
+    plt.ylabel("Coordenada Y")
+    plt.legend()
+    plt.grid(True)
+    
+    # Salva o gráfico em um arquivo
+    plt.savefig(nome_arquivo)
+    plt.close() # Fecha a figura para economizar memória
+    
+    print("Gráfico da rota salvo com sucesso.")
