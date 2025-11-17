@@ -1,34 +1,60 @@
 import parser_tsplib
 import utils
+import time 
+import numpy as np 
+import visualizacao # Importa nosso arquivo de gráficos
 from algoritmo_genetico import AlgoritmoGenetico
-from colonia_formigas import ACO # NOVO: Importa a classe ACO
-from recozimento_simulado import RecozimentoSimulado # NOVO
+from colonia_formigas import ACO 
+from recozimento_simulado import RecozimentoSimulado 
 
-# --- 0. ESCOLHA DO ALGORITMO ---
-ALGORITMO_A_EXECUTAR = "SA" # Mude para "AG", "ACO" ou "SA" 
-
-# --- 1. CONFIGURAÇÕES GERAIS ---
+# --- 1. DEFINIÇÃO DOS EXPERIMENTOS ---
+#
+#    Este é o seu novo "Painel de Controle".
+#    Basta adicionar ou remover dicionários desta lista para
+#    rodar diferentes análises.
+#
+# -----------------------------------------------------------------
+NUM_EXECUCOES = 30
 ARQUIVO_DADOS = "data/st70.tsp"
-TAMANHO_POPULACAO = 50  # Usado pelo AG e ACO (num_formigas)
-NUM_GERACOES = 200      # Usado pelo AG e ACO (num_iteracoes)
-TAXA_MUTACAO = 0.01     # Apenas AG
-TAXA_ELITISMO = 0.05    # Apenas AG
+NUM_GERACOES = 200      # (AG, ACO)
+TAMANHO_POPULACAO = 50  # (AG, ACO)
 
-# --- PARÂMETROS PARA AS ANÁLISES DO AG ---
-METODO_SELECAO = 'torneio' 
-METODO_MUTACAO = 'inversao' 
-METODO_CROSSOVER = 'ox'
+# --- Lista de Experimentos para Executar ---
 
-# --- PARÂMETROS PARA AS ANÁLISES DO ACO ---
-ACO_ALFA = 1.0 # Peso do feromônio
-ACO_BETA = 5.0 # Peso da distância
-ACO_RHO = 0.1  # Taxa de evaporação
-ACO_Q = 100    # Quantidade de feromônio
+# Exemplo para Análise 3: Mutação (Troca vs. Inversão)
+experimentos_para_rodar = [
+    {
+        "nome": "AG-Torneio-Troca",
+        "algoritmo": "AG",
+        "params": {
+            "metodo_selecao": "torneio",
+            "metodo_mutacao": "troca", # <-- A MUDANÇA
+            "taxa_elitismo": 0.05,
+            "taxa_mutacao": 0.01,
+            "metodo_crossover": "ox"
+        }
+    },
+    {
+        "nome": "AG-Torneio-Inversao",
+        "algoritmo": "AG",
+        "params": {
+            "metodo_selecao": "torneio",
+            "metodo_mutacao": "inversao", # <-- A MUDANÇA
+            "taxa_elitismo": 0.05,
+            "taxa_mutacao": 0.01,
+            "metodo_crossover": "ox"
+        }
+    }
+]
 
-# --- PARÂMETROS PARA AS ANÁLISES DO SA ---
-SA_TEMP_INICIAL = 10000
-SA_TEMP_FINAL = 1
-SA_TAXA_RESFRIAMENTO = 0.995 # Resfriamento lento
+# (Para rodar a Análise 2 (Seleção), você faria uma lista como acima,
+#  mas mudando 'metodo_selecao' entre 'torneio' e 'roleta')
+
+# (Para rodar a Análise 9 (Comparação Cruzada), sua lista seria:
+#  [ {"nome": "AG-Final", "algoritmo": "AG", ...},
+#    {"nome": "ACO-Final", "algoritmo": "ACO", ...},
+#    {"nome": "SA-Final", "algoritmo": "SA", ...} ]
+# )
 
 # -----------------------------------------------------------------
 
@@ -40,70 +66,89 @@ print(f"Arquivo: {ARQUIVO_DADOS} ({num_cidades} cidades)")
 print("---------------------------------")
 
 
-if ALGORITMO_A_EXECUTAR == "AG":
-    # --- 3. INICIALIZAÇÃO DO ALGORITMO GENÉTICO ---
-    ag = AlgoritmoGenetico(
-        cidades=minhas_cidades,
-        tamanho_populacao=TAMANHO_POPULACAO,
-        num_geracoes=NUM_GERACOES,
-        taxa_mutacao=TAXA_MUTACAO,
-        taxa_elitismo=TAXA_ELITISMO,
-        metodo_selecao=METODO_SELECAO,
-        metodo_mutacao=METODO_MUTACAO,
-        metodo_crossover=METODO_CROSSOVER
-    )
+# --- 3. LOOP DE EXECUÇÃO DOS EXPERIMENTOS ---
+resultados_para_boxplot = {}
+resultados_para_convergencia = {}
 
-    # --- 4. EXECUÇÃO DA EVOLUÇÃO ---
-    melhor_solucao = ag.executar() # Chama o loop principal
+for exp in experimentos_para_rodar:
+    nome_exp = exp["nome"]
+    algoritmo = exp["algoritmo"]
+    
+    print(f"\n===== INICIANDO EXPERIMENTO: {nome_exp} ({NUM_EXECUCOES} execuções) =====")
+    
+    resultados_distancia = []
+    resultados_tempo = []
+    historico_30_execucoes = []
+    
+    for i in range(NUM_EXECUCOES):
+        print(f"--- Execução {i + 1} de {NUM_EXECUCOES} ---", end="") # 'end=""' para log em uma linha
+        start_time = time.time()
+        
+        distancia_final = float('inf')
+        
+        if algoritmo == "AG":
+            params = exp["params"]
+            ag = AlgoritmoGenetico(
+                cidades=minhas_cidades,
+                tamanho_populacao=TAMANHO_POPULACAO,
+                num_geracoes=NUM_GERACOES,
+                taxa_mutacao=params["taxa_mutacao"],
+                taxa_elitismo=params["taxa_elitismo"],
+                metodo_selecao=params["metodo_selecao"],
+                metodo_mutacao=params["metodo_mutacao"],
+                metodo_crossover=params["metodo_crossover"]
+            )
+            melhor_solucao = ag.executar() 
+            distancia_final = melhor_solucao.distancia
+            historico_30_execucoes.append(ag.historico_melhores)
 
-    # --- 5. RESULTADO FINAL ---
-    print("\n--- RESULTADO FINAL (AG) ---")
-    print(f"Melhor solução encontrada após {NUM_GERACOES} gerações:")
-    print(f"Distância: {melhor_solucao.distancia:.2f}")
-    print(f"Rota (primeiras 10 cidades): {melhor_solucao.rota[:10]}...")
-    print("---------------------------------")
+        elif algoritmo == "ACO":
+            aco = ACO(
+                cidades=minhas_cidades,
+                num_formigas=TAMANHO_POPULACAO,
+                num_iteracoes=NUM_GERACOES,
+                alfa=1.0, beta=5.0, rho=0.1, Q=100 # (Valores padrão)
+            )
+            _, distancia_final = aco.executar()
+            historico_30_execucoes.append(aco.historico_melhores)
 
-elif ALGORITMO_A_EXECUTAR == "ACO":
-    # --- 3. INICIALIZAÇÃO DA COLÔNIA DE FORMIGAS ---
-    aco = ACO(
-        cidades=minhas_cidades,
-        num_formigas=TAMANHO_POPULACAO,
-        num_iteracoes=NUM_GERACOES,
-        alfa=ACO_ALFA,
-        beta=ACO_BETA,
-        rho=ACO_RHO,
-        Q=ACO_Q
-    )
-    
-    # --- 4. EXECUÇÃO DO ACO ---
-    # <<< CÓDIGO MOVIDO PARA DENTRO DO BLOCO CORRETO
-    melhor_rota, melhor_distancia = aco.executar()
-    
-    # --- 5. RESULTADO FINAL ---
-    # <<< CÓDIGO MOVIDO PARA DENTRO DO BLOCO CORRETO
-    print("\n--- RESULTADO FINAL (ACO) ---")
-    print(f"Melhor solução encontrada após {NUM_GERACOES} iterações:")
-    print(f"Distância: {melhor_distancia:.2f}")
-    print(f"Rota (primeiras 10 cidades): {melhor_rota[:10]}...")
-    print("---------------------------------")
+        elif algoritmo == "SA":
+            sa = RecozimentoSimulado(
+                cidades=minhas_cidades,
+                temp_inicial=10000, temp_final=1, taxa_resfriamento=0.995 # (Valores padrão)
+            )
+            _, distancia_final = sa.executar()
+            historico_30_execucoes.append(sa.historico_melhores)
+        
+        end_time = time.time()
+        tempo_execucao = end_time - start_time
+        
+        resultados_distancia.append(distancia_final)
+        resultados_tempo.append(tempo_execucao)
+        
+        print(f" -> Distância = {distancia_final:.2f} (Tempo: {tempo_execucao:.2f}s)")
 
-# <<< CORRIGIDO: Este 'elif' deve estar no mesmo nível do 'if' e 'elif' acima
-elif ALGORITMO_A_EXECUTAR == "SA":
-    # --- 3. INICIALIZAÇÃO DO RECOZIMENTO SIMULADO ---
-    sa = RecozimentoSimulado(
-        cidades=minhas_cidades,
-        temp_inicial=SA_TEMP_INICIAL,
-        temp_final=SA_TEMP_FINAL,
-        taxa_resfriamento=SA_TAXA_RESFRIAMENTO
-    )
+    # --- 4. RESUMO ESTATÍSTICO DO EXPERIMENTO ---
+    print(f"\n--- Resumo Estatístico para: {nome_exp} ---")
+    print(f"  Distância Média:   {np.mean(resultados_distancia):.2f}")
+    print(f"  Distância Desv.Padrão: {np.std(resultados_distancia):.2f}")
+    print(f"  Distância Melhor (Min):  {np.min(resultados_distancia):.2f}")
+    print(f"  Tempo Médio:   {np.mean(resultados_tempo):.2f}s")
     
-    # --- 4. EXECUÇÃO DO SA ---
-    # Chama o loop principal
-    melhor_rota, melhor_distancia = sa.executar()
-    
-    # --- 5. RESULTADO FINAL ---
-    print("\n--- RESULTADO FINAL (SA) ---")
-    print(f"Melhor solução encontrada:")
-    print(f"Distância: {melhor_distancia:.2f}")
-    print(f"Rota (primeiras 10 cidades): {melhor_rota[:10]}...")
-    print("---------------------------------")
+    # Salva os resultados para os gráficos finais
+    resultados_para_boxplot[nome_exp] = resultados_distancia
+    resultados_para_convergencia[nome_exp] = historico_30_execucoes
+
+# --- 5. GERAÇÃO DE GRÁFICOS FINAIS ---
+print("\n===== GERANDO GRÁFICOS COMPARATIVOS =====")
+
+# 5.1. Gerar Gráfico de Convergência para cada experimento
+for nome_exp, historico in resultados_para_convergencia.items():
+    nome_grafico = f"convergencia_{nome_exp}.png"
+    visualizacao.plotar_convergencia(historico, nome_grafico)
+
+# 5.2. Gerar UM Boxplot comparando TODOS os experimentos
+nome_boxplot = "boxplot_comparativo.png"
+visualizacao.plotar_boxplot_comparativo(resultados_para_boxplot, nome_boxplot)
+
+print("\nTodos os experimentos e gráficos foram concluídos.")
