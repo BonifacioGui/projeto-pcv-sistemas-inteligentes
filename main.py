@@ -26,25 +26,25 @@ TAMANHO_POPULACAO = 50         # Tamanho da população (AG) / N° de formigas (
 
 # --- Lista de Experimentos para Executar ---
 
-# Análise 2: Comparação de Métodos de Seleção
+# Análise 3: Comparação de Métodos de Mutação
 experimentos_para_rodar = [
     {
-        "nome": "AG-Selecao-Torneio",
+        "nome": "AG-Mutacao-Troca",
         "algoritmo": "AG",
         "params": {
-            "metodo_selecao": "torneio", # <-- VARIÁVEL DE TESTE
-            "metodo_mutacao": "inversao",   # (Constante)
+            "metodo_selecao": "torneio",    # (Constante)
+            "metodo_mutacao": "troca",    # <-- VARIÁVEL DE TESTE
             "taxa_elitismo": 0.05,          # (Constante)
             "taxa_mutacao": 0.01,           # (Constante)
             "metodo_crossover": "ox"        # (Constante)
         }
     },
     {
-        "nome": "AG-Selecao-Roleta",
+        "nome": "AG-Mutacao-Inversao",
         "algoritmo": "AG",
         "params": {
-            "metodo_selecao": "roleta",  # <-- VARIÁVEL DE TESTE
-            "metodo_mutacao": "inversao",   # (Constante)
+            "metodo_selecao": "torneio",    # (Constante)
+            "metodo_mutacao": "inversao", # <-- VARIÁVEL DE TESTE
             "taxa_elitismo": 0.05,          # (Constante)
             "taxa_mutacao": 0.01,           # (Constante)
             "metodo_crossover": "ox"        # (Constante)
