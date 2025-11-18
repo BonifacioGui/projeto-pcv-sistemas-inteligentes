@@ -1,183 +1,141 @@
-# Dentro de colonia_formigas.py
-
 import random
+import numpy as np
 import utils
-import numpy as np # Vamos usar numpy para os cálculos matriciais
 
 class ACO:
     """
     Implementa o algoritmo Ant Colony Optimization (ACO) para o PCV.
     """
-    def __init__(self, cidades, num_formigas, num_iteracoes,
-                 alfa=1.0, beta=5.0, rho=0.1, Q=100):
-        
-        # 1. Dados do Problema
+
+    def __init__(self, cidades, num_formigas, num_iteracoes, alfa, beta, rho, Q):
         self.cidades = cidades
         self.num_cidades = len(cidades)
-        
-        # 2. Hiperparâmetros do ACO
-        self.num_formigas = num_formigas # Tamanho da "população"
-        self.num_iteracoes = num_iteracoes   # "Gerações"
-        
-        # Influência do feromônio
-        self.alfa = alfa  
-        # Influência da visibilidade (distância)
-        self.beta = beta  
-        # Taxa de evaporação do feromônio
-        self.rho = rho    
-        # Quantidade de feromônio a ser depositado
-        self.Q = Q        
-        
-        # 3. Matrizes do ACO
-        
-        # Matriz de feromônio (inicia com 1 em todos os caminhos)
+        self.num_formigas = num_formigas
+        self.num_iteracoes = num_iteracoes
+        self.alfa = alfa      # importância do feromônio
+        self.beta = beta      # importância da heurística (visibilidade)
+        self.rho = rho        # taxa de evaporação
+        self.Q = Q            # quantidade de feromônio depositada
+
+        # Matriz de feromônios inicial
         self.feromonios = np.ones((self.num_cidades, self.num_cidades))
-        
-        # Matriz de Heurística/Visibilidade (calculada uma vez)
+
+        # Calcula matriz de heurísticas (1/distância)
         self.heuristicas = self._calcular_matriz_heuristicas()
 
+        # Histórico para plotar a convergência
+        self.historico_melhores = []
+
+    # -------------------------------------------------------------
+    # MATRIZ DE HEURÍSTICAS
+    # -------------------------------------------------------------
     def _calcular_matriz_heuristicas(self):
-        """
-        Calcula a matriz de visibilidade (1 / distancia).
-        Caminhos mais curtos têm maior heurística.
-        """
         heuristicas = np.zeros((self.num_cidades, self.num_cidades))
+        
         for i in range(self.num_cidades):
             for j in range(i + 1, self.num_cidades):
-                # Calcula a distância entre a cidade i e j
                 dist = utils.calcular_distancia(self.cidades[i], self.cidades[j])
-                
-                # Heurística é o inverso da distância (evita divisão por zero)
-                valor_heuristica = 1.0 / (dist + 1e-10) 
-                
-                heuristicas[i][j] = valor_heuristica
-                heuristicas[j][i] = valor_heuristica
-        
+                valor = 1.0 / (dist + 1e-10)
+                heuristicas[i][j] = valor
+                heuristicas[j][i] = valor
+
         return heuristicas
 
-    # --- Próximos Passos (a implementar) ---
-
-    # Dentro da classe ACO, SUBSTITUA os métodos vazios por estes:
-
+    # -------------------------------------------------------------
+    # EXECUÇÃO DO ACO
+    # -------------------------------------------------------------
     def executar(self):
-        """
-        Executa o loop principal do ACO por N iterações.
-        """
         print(f"Iniciando ACO: Formigas={self.num_formigas}, Iterações={self.num_iteracoes}")
         
-        # Guarda a melhor rota encontrada em toda a execução
         melhor_rota_global = None
-        menor_distancia_global = float('inf') # Começa com infinito
-        
-        # Loop principal (Iterações)
+        menor_distancia_global = float('inf')
+
         for i in range(1, self.num_iteracoes + 1):
-            
-            # 1. Construir soluções (uma para cada formiga)
+
             rotas_das_formigas = []
+
+            # Constrói solução para cada formiga
             for _ in range(self.num_formigas):
                 rota = self._construir_solucao()
                 rotas_das_formigas.append(rota)
-            
-            # 2. Atualizar o Feromônio (Evaporação + Depósito)
+
+            # Atualiza feromônios
             self._atualizar_feromonio(rotas_das_formigas)
-            
-            # 3. Encontrar a melhor rota desta iteração
-            # (e atualizar a melhor rota global)
+
+            # Avalia as rotas
             melhor_dist_iteracao = float('inf')
-            
+
             for rota in rotas_das_formigas:
-                dist_rota = utils.calcular_distancia_total(rota, self.cidades)
-                
-                if dist_rota < melhor_dist_iteracao:
-                    melhor_dist_iteracao = dist_rota
-                
-                if dist_rota < menor_distancia_global:
-                    menor_distancia_global = dist_rota
+                d = utils.calcular_distancia_total(rota, self.cidades)
+
+                if d < melhor_dist_iteracao:
+                    melhor_dist_iteracao = d
+
+                if d < menor_distancia_global:
+                    menor_distancia_global = d
                     melhor_rota_global = rota
-            
-            # Print de log (para acompanhar a convergência)
+
+            # Salva histórico para gráfico
+            self.historico_melhores.append(menor_distancia_global)
+
+            # Log a cada 10 iterações
             if i % 10 == 0 or i == self.num_iteracoes:
-                print(f"Iteração {i:3}: Melhor Distância = {melhor_dist_iteracao:.2f} (Melhor Global: {menor_distancia_global:.2f})")
+                print(f"Iteração {i:3}: Melhor Iteração = {melhor_dist_iteracao:.2f} | Melhor Global = {menor_distancia_global:.2f}")
 
         print("Evolução do ACO concluída.")
-        # Retorna a melhor rota (lista de índices) e sua distância
         return melhor_rota_global, menor_distancia_global
 
+    # -------------------------------------------------------------
+    # CONSTRUÇÃO DA ROTA
+    # -------------------------------------------------------------
     def _construir_solucao(self):
-        """
-        Simula uma formiga construindo uma rota completa.
-        A escolha da próxima cidade é baseada em probabilidade.
-        """
-        # Começa a rota em uma cidade aleatória
         cidade_inicial = random.randint(0, self.num_cidades - 1)
         rota = [cidade_inicial]
-        
-        # Cidades que ainda precisam ser visitadas
+
         cidades_a_visitar = set(range(self.num_cidades))
         cidades_a_visitar.remove(cidade_inicial)
-        
-        # Loop: Constrói o resto da rota (N-1 cidades)
+
+        # Formiga constrói rota por probabilidade
         while cidades_a_visitar:
-            cidade_atual = rota[-1] # A última cidade adicionada
-            
-            # Calcula a "desejabilidade" de ir para cada próxima cidade
+            atual = rota[-1]
+
             probabilidades = []
             cidades_possiveis = []
-            
-            for proxima_cidade in cidades_a_visitar:
-                # Pega o valor do feromônio e da heurística
-                feromonio = self.feromonios[cidade_atual][proxima_cidade]
-                heuristica = self.heuristicas[cidade_atual][proxima_cidade]
-                
-                # Fórmula de Probabilidade do ACO
-                # [Image of ACO probability formula for TSP]
-                prob = (feromonio ** self.alfa) * (heuristica ** self.beta)
-                
+
+            for prox in cidades_a_visitar:
+                f = self.feromonios[atual][prox]
+                h = self.heuristicas[atual][prox]
+
+                prob = (f ** self.alfa) * (h ** self.beta)
                 probabilidades.append(prob)
-                cidades_possiveis.append(proxima_cidade)
-            
-            # Normaliza as probabilidades (para que somem 1)
-            soma_probs = sum(probabilidades)
-            probabilidades_normalizadas = [p / (soma_probs + 1e-10) for p in probabilidades]
-            
-            # Escolhe a próxima cidade com base nas probabilidades (roleta)
-            proxima_cidade_escolhida = random.choices(
-                cidades_possiveis, 
-                weights=probabilidades_normalizadas, 
-                k=1
-            )[0]
-            
-            # Adiciona a cidade escolhida à rota
-            rota.append(proxima_cidade_escolhida)
-            cidades_a_visitar.remove(proxima_cidade_escolhida)
-            
+                cidades_possiveis.append(prox)
+
+            soma = sum(probabilidades)
+            probs_norm = [p / (soma + 1e-10) for p in probabilidades]
+
+            proxima = random.choices(cidades_possiveis, weights=probs_norm, k=1)[0]
+
+            rota.append(proxima)
+            cidades_a_visitar.remove(proxima)
+
         return rota
 
+    # -------------------------------------------------------------
+    # ATUALIZAÇÃO DE FEROMÔNIOS
+    # -------------------------------------------------------------
     def _atualizar_feromonio(self, rotas_das_formigas):
-        """
-        Atualiza a matriz de feromônio:
-        1. Evapora o feromônio antigo em TODOS os caminhos.
-        2. Deposita novo feromônio nos caminhos usados pelas formigas.
-        """
-        
-        # 1. Evaporação
-        # Multiplica todos os caminhos por (1 - rho)
-        # Ex: se rho=0.1, 90% do feromônio permanece
+
+        # Evaporação
         self.feromonios *= (1 - self.rho)
-        
-        # 2. Depósito
+
+        # Depósito
         for rota in rotas_das_formigas:
-            # Calcula a distância (custo) da rota
-            distancia_rota = utils.calcular_distancia_total(rota, self.cidades)
-            
-            # A quantidade de feromônio a depositar é inversamente
-            # proporcional à distância (rotas mais curtas depositam mais)
-            feromonio_a_depositar = self.Q / distancia_rota
-            
-            # Deposita o feromônio em cada segmento (i, j) da rota
+            distancia = utils.calcular_distancia_total(rota, self.cidades)
+            deposito = self.Q / distancia
+
             for i in range(self.num_cidades):
-                cidade_i = rota[i]
-                cidade_j = rota[(i + 1) % self.num_cidades] # Pega a próxima (ou a 1ª se for a última)
-                
-                self.feromonios[cidade_i][cidade_j] += feromonio_a_depositar
-                self.feromonios[cidade_j][cidade_i] += feromonio_a_depositar # Caminho simétrico
+                a = rota[i]
+                b = rota[(i + 1) % self.num_cidades]
+
+                self.feromonios[a][b] += deposito
+                self.feromonios[b][a] += deposito

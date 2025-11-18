@@ -24,18 +24,19 @@ TAMANHO_POPULACAO = 50
 
 # --- Lista de Experimentos para Executar ---
 
-# Análise 5: Escalabilidade do AG (rodando o MELHOR AG na base eil101)
+# --- Lista de Experimentos para Executar ---
+
+# Análise 8: Escalabilidade do ACO e SA na base eil101
 experimentos_para_rodar = [
     {
-        "nome": "AG-MelhorConfig-eil101",
-        "algoritmo": "AG",
-        "params": {
-            "metodo_selecao": "torneio",    # (Vencedor da Análise 2)
-            "metodo_mutacao": "inversao",   # (Vencedor da Análise 3)
-            "taxa_elitismo": 0.05,          # (Vencedor da Análise 4)
-            "taxa_mutacao": 0.01,           # (Parâmetro padrão)
-            "metodo_crossover": "ox"        # (Parâmetro padrão)
-        }
+        "nome": "ACO-eil101",
+        "algoritmo": "ACO",
+        "params": {} # ACO usa os parâmetros padrão (ACO_ALFA, ACO_BETA, etc.)
+    },
+    {
+        "nome": "SA-eil101",
+        "algoritmo": "SA",
+        "params": {} # SA usa os parâmetros padrão (SA_TEMP_INICIAL, etc.)
     }
 ]
 
