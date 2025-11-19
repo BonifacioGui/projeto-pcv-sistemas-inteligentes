@@ -1,183 +1,302 @@
-# Dentro de colonia_formigas.py
+# colonia_formigas.py
+"""
+Colônia de Formigas (ACO) - versão robusta e otimizada (MMAS-like)
 
+Principais características:
+- usa matriz de distâncias pré-computada (muito mais rápido)
+- feromônios com limites (tau_min / tau_max) estilo MMAS
+- depósito elitista (melhor global reforça mais)
+- detecção de estagnação e reinicialização parcial de feromônios
+- histórico de melhores por iteração
+- implementação vetorizada onde apropriado (numpy)
+- proteções numéricas (EPS) e fallbacks
+"""
+from typing import List, Tuple, Optional
+import numpy as np
 import random
+
 import utils
-import numpy as np # Vamos usar numpy para os cálculos matriciais
+
+EPS = 1e-12
+
 
 class ACO:
-    """
-    Implementa o algoritmo Ant Colony Optimization (ACO) para o PCV.
-    """
-    def __init__(self, cidades, num_formigas, num_iteracoes,
-                 alfa=1.0, beta=5.0, rho=0.1, Q=100):
-        
-        # 1. Dados do Problema
+    def __init__(
+        self,
+        cidades: List[Tuple[float, float]],
+        num_formigas: Optional[int] = None,
+        num_iteracoes: int = 200,
+        alfa: float = 1.0,
+        beta: float = 2.5,
+        rho: float = 0.1,
+        Q: float = 1.0,
+        pheromone_init: Optional[float] = None,
+        pheromone_min: Optional[float] = None,
+        pheromone_max: Optional[float] = None,
+        elite_weight: float = 2.0,
+        stagnation_limit: int = 50,
+        historico_max_length: Optional[int] = None,
+        rng_seed: Optional[int] = None,
+    ):
+        """
+        Parâmetros:
+          - cidades: lista de (x,y)
+          - num_formigas: se None, usa min(num_cidades, 20)
+          - num_iteracoes: iterações do algoritmo
+          - alfa, beta: pesos de feromônio e heurística
+          - rho: taxa de evaporação (0..1)
+          - Q: constante para cálculo de depósito (normalmente 1.0 ou 100.0)
+          - pheromone_init/min/max: limites/valor inicial. Se None, valores sensatos são estimados.
+          - elite_weight: multiplicador para depósito da melhor rota global
+          - stagnation_limit: reinicializa parcialmente feromônios quando não houver melhora
+          - historico_max_length: limita o histórico guardado (None = sem limite)
+          - rng_seed: semente para reprodutibilidade
+        """
         self.cidades = cidades
         self.num_cidades = len(cidades)
-        
-        # 2. Hiperparâmetros do ACO
-        self.num_formigas = num_formigas # Tamanho da "população"
-        self.num_iteracoes = num_iteracoes   # "Gerações"
-        
-        # Influência do feromônio
-        self.alfa = alfa  
-        # Influência da visibilidade (distância)
-        self.beta = beta  
-        # Taxa de evaporação do feromônio
-        self.rho = rho    
-        # Quantidade de feromônio a ser depositado
-        self.Q = Q        
-        
-        # 3. Matrizes do ACO
-        
-        # Matriz de feromônio (inicia com 1 em todos os caminhos)
-        self.feromonios = np.ones((self.num_cidades, self.num_cidades))
-        
-        # Matriz de Heurística/Visibilidade (calculada uma vez)
+
+        self.num_formigas = int(min(self.num_cidades, 20)) if num_formigas is None else max(1, int(num_formigas))
+        self.num_iteracoes = max(1, int(num_iteracoes))
+
+        self.alfa = float(alfa)
+        self.beta = float(beta)
+        self.rho = float(rho)
+        self.Q = float(Q)
+
+        # matriz de distâncias (lista de listas) — usar em cálculos de distância
+        self.dist_matrix = utils.calcular_matriz_distancias(self.cidades)
+
+        # heurística (1 / dist), evitando divisão por zero
         self.heuristicas = self._calcular_matriz_heuristicas()
 
-    def _calcular_matriz_heuristicas(self):
-        """
-        Calcula a matriz de visibilidade (1 / distancia).
-        Caminhos mais curtos têm maior heurística.
-        """
-        heuristicas = np.zeros((self.num_cidades, self.num_cidades))
+        # feromônios: valor inicial sensato
+        # se não informado, estimamos um tau0 = 1 / (n * avg_dist)
+        avg_dist = self._estimativa_distancia_media()
+        if pheromone_init is None:
+            tau0 = 1.0 / (max(1.0, self.num_cidades) * max(avg_dist, EPS))
+        else:
+            tau0 = float(pheromone_init)
+        self.pheromone_init = float(tau0)
+
+        # inicializa matriz de feromônio
+        self.feromonios = np.full((self.num_cidades, self.num_cidades), self.pheromone_init, dtype=float)
+
+        # limites (tau_min, tau_max). Se não passados, definimos de forma adaptativa.
+        # tau_max = 1 / (rho * best_dist) é uma fórmula comum, mas sem best_dist inicial usamos heurísticas
+        if pheromone_max is None:
+            # usa um valor grande relativo a tau0; será ajustado após encontrar uma boa solução
+            self.pheromone_max = max(1.0, self.pheromone_init * 10.0)
+        else:
+            self.pheromone_max = float(pheromone_max)
+
+        if pheromone_min is None:
+            # default conservador
+            self.pheromone_min = max(EPS, self.pheromone_max / (2.0 * self.num_cidades))
+        else:
+            self.pheromone_min = float(pheromone_min)
+
+        # elitismo / rank deposit
+        self.elite_weight = float(elite_weight)
+
+        # estagnação: se não houver melhora por 'stagnation_limit' iterações, reinicializa parcialmente
+        self.stagnation_limit = max(1, int(stagnation_limit))
+
+        # histórico
+        self.historico_melhores: List[float] = []
+        self.historico_max_length = historico_max_length or self.num_iteracoes
+
+        # estado de melhor global
+        self.best_route: Optional[List[int]] = None
+        self.best_distance: float = float("inf")
+
+        # semente
+        if rng_seed is not None:
+            random.seed(rng_seed)
+            np.random.seed(rng_seed)
+
+    # -----------------------
+    # utilitários
+    # -----------------------
+    def _calculcar_dist_matrix_numpy(self) -> np.ndarray:
+        """Retorna a matriz de distâncias como numpy array (copiada da dist_matrix)."""
+        return np.array(self.dist_matrix, dtype=float)
+
+    def _calcular_matriz_heuristicas(self) -> np.ndarray:
+        h = np.zeros((self.num_cidades, self.num_cidades), dtype=float)
         for i in range(self.num_cidades):
             for j in range(i + 1, self.num_cidades):
-                # Calcula a distância entre a cidade i e j
-                dist = utils.calcular_distancia(self.cidades[i], self.cidades[j])
-                
-                # Heurística é o inverso da distância (evita divisão por zero)
-                valor_heuristica = 1.0 / (dist + 1e-10) 
-                
-                heuristicas[i][j] = valor_heuristica
-                heuristicas[j][i] = valor_heuristica
-        
-        return heuristicas
+                d = self.dist_matrix[i][j]
+                h_val = 1.0 / (d + EPS)
+                h[i, j] = h_val
+                h[j, i] = h_val
+        return h
 
-    # --- Próximos Passos (a implementar) ---
+    def _estimativa_distancia_media(self) -> float:
+        # média das distâncias fora diagonal
+        total = 0.0
+        count = 0
+        for i in range(self.num_cidades):
+            for j in range(i + 1, self.num_cidades):
+                total += self.dist_matrix[i][j]
+                count += 1
+        return (total / count) if count > 0 else 1.0
 
-    # Dentro da classe ACO, SUBSTITUA os métodos vazios por estes:
+    def _clip_pheromones(self) -> None:
+        np.clip(self.feromonios, self.pheromone_min, self.pheromone_max, out=self.feromonios)
 
-    def executar(self):
+    def _reinicializar_parcial(self) -> None:
         """
-        Executa o loop principal do ACO por N iterações.
+        Blend parcialmente os feromônios com o valor inicial para sair de estagnação.
+        Isso reduz a influência acumulada sem apagar tudo.
         """
-        print(f"Iniciando ACO: Formigas={self.num_formigas}, Iterações={self.num_iteracoes}")
-        
-        # Guarda a melhor rota encontrada em toda a execução
-        melhor_rota_global = None
-        menor_distancia_global = float('inf') # Começa com infinito
-        
-        # Loop principal (Iterações)
-        for i in range(1, self.num_iteracoes + 1):
-            
-            # 1. Construir soluções (uma para cada formiga)
-            rotas_das_formigas = []
-            for _ in range(self.num_formigas):
-                rota = self._construir_solucao()
-                rotas_das_formigas.append(rota)
-            
-            # 2. Atualizar o Feromônio (Evaporação + Depósito)
-            self._atualizar_feromonio(rotas_das_formigas)
-            
-            # 3. Encontrar a melhor rota desta iteração
-            # (e atualizar a melhor rota global)
-            melhor_dist_iteracao = float('inf')
-            
-            for rota in rotas_das_formigas:
-                dist_rota = utils.calcular_distancia_total(rota, self.cidades)
-                
-                if dist_rota < melhor_dist_iteracao:
-                    melhor_dist_iteracao = dist_rota
-                
-                if dist_rota < menor_distancia_global:
-                    menor_distancia_global = dist_rota
-                    melhor_rota_global = rota
-            
-            # Print de log (para acompanhar a convergência)
-            if i % 10 == 0 or i == self.num_iteracoes:
-                print(f"Iteração {i:3}: Melhor Distância = {melhor_dist_iteracao:.2f} (Melhor Global: {menor_distancia_global:.2f})")
+        self.feromonios = 0.5 * self.feromonios + 0.5 * self.pheromone_init
+        self._clip_pheromones()
 
-        print("Evolução do ACO concluída.")
-        # Retorna a melhor rota (lista de índices) e sua distância
-        return melhor_rota_global, menor_distancia_global
+    # -----------------------
+    # Construção de solução (uma formiga)
+    # -----------------------
+    def _construir_solucao(self, start: Optional[int] = None) -> List[int]:
+        """
+        Constrói uma rota (lista de índices).
+        Usa a regra probabilística com feromônio^alfa * heuristica^beta.
+        """
+        if start is None:
+            current = random.randrange(self.num_cidades)
+        else:
+            current = int(start)
+        rota = [current]
+        nao_visitadas = set(range(self.num_cidades))
+        nao_visitadas.remove(current)
 
-    def _construir_solucao(self):
-        """
-        Simula uma formiga construindo uma rota completa.
-        A escolha da próxima cidade é baseada em probabilidade.
-        """
-        # Começa a rota em uma cidade aleatória
-        cidade_inicial = random.randint(0, self.num_cidades - 1)
-        rota = [cidade_inicial]
-        
-        # Cidades que ainda precisam ser visitadas
-        cidades_a_visitar = set(range(self.num_cidades))
-        cidades_a_visitar.remove(cidade_inicial)
-        
-        # Loop: Constrói o resto da rota (N-1 cidades)
-        while cidades_a_visitar:
-            cidade_atual = rota[-1] # A última cidade adicionada
-            
-            # Calcula a "desejabilidade" de ir para cada próxima cidade
-            probabilidades = []
-            cidades_possiveis = []
-            
-            for proxima_cidade in cidades_a_visitar:
-                # Pega o valor do feromônio e da heurística
-                feromonio = self.feromonios[cidade_atual][proxima_cidade]
-                heuristica = self.heuristicas[cidade_atual][proxima_cidade]
-                
-                # Fórmula de Probabilidade do ACO
-                # [Image of ACO probability formula for TSP]
-                prob = (feromonio ** self.alfa) * (heuristica ** self.beta)
-                
-                probabilidades.append(prob)
-                cidades_possiveis.append(proxima_cidade)
-            
-            # Normaliza as probabilidades (para que somem 1)
-            soma_probs = sum(probabilidades)
-            probabilidades_normalizadas = [p / (soma_probs + 1e-10) for p in probabilidades]
-            
-            # Escolhe a próxima cidade com base nas probabilidades (roleta)
-            proxima_cidade_escolhida = random.choices(
-                cidades_possiveis, 
-                weights=probabilidades_normalizadas, 
-                k=1
-            )[0]
-            
-            # Adiciona a cidade escolhida à rota
-            rota.append(proxima_cidade_escolhida)
-            cidades_a_visitar.remove(proxima_cidade_escolhida)
-            
+        # para acelerar, referenciar arrays locais
+        fer = self.feromonios
+        heur = self.heuristicas
+        alfa = self.alfa
+        beta = self.beta
+
+        while nao_visitadas:
+            cand = list(nao_visitadas)
+            # computa pesos: tau^alfa * eta^beta
+            taus = fer[current, cand]  # numpy fancy indexing
+            etas = heur[current, cand]
+            # calcula pesos de modo numérico estável
+            # evita potenciação de números muito pequenos/grandes usando np.power direto
+            with np.errstate(over='raise', divide='raise', invalid='raise'):
+                try:
+                    pesos = np.power(taus, alfa) * np.power(etas, beta)
+                except FloatingPointError:
+                    # fallback: normaliza taus e etas para evitar overflow/underflow
+                    taus_safe = np.clip(taus, EPS, None)
+                    etas_safe = np.clip(etas, EPS, None)
+                    pesos = np.power(taus_safe, alfa) * np.power(etas_safe, beta)
+
+            soma = float(pesos.sum())
+            if soma <= 0.0 or not np.isfinite(soma):
+                # fallback: escolha aleatória uniforme
+                proxima = random.choice(cand)
+            else:
+                # escolha com prob proporcional às pesos
+                probs = pesos / soma
+                # random.choice via numpy para vetor
+                proxima = int(np.random.choice(cand, p=probs))
+            rota.append(proxima)
+            nao_visitadas.remove(proxima)
+            current = proxima
+
         return rota
 
-    def _atualizar_feromonio(self, rotas_das_formigas):
+    # -----------------------
+    # Atualização de feromônio
+    # -----------------------
+    def _atualizar_feromonio(self, rotas: List[List[int]]) -> None:
         """
-        Atualiza a matriz de feromônio:
-        1. Evapora o feromônio antigo em TODOS os caminhos.
-        2. Deposita novo feromônio nos caminhos usados pelas formigas.
+        1) Evaporação
+        2) Depósito: deposit_all (todas as formigas) + extra para best_global (elitismo)
+        Depois aplica clipping (tau_min, tau_max).
         """
-        
-        # 1. Evaporação
-        # Multiplica todos os caminhos por (1 - rho)
-        # Ex: se rho=0.1, 90% do feromônio permanece
-        self.feromonios *= (1 - self.rho)
-        
-        # 2. Depósito
-        for rota in rotas_das_formigas:
-            # Calcula a distância (custo) da rota
-            distancia_rota = utils.calcular_distancia_total(rota, self.cidades)
-            
-            # A quantidade de feromônio a depositar é inversamente
-            # proporcional à distância (rotas mais curtas depositam mais)
-            feromonio_a_depositar = self.Q / distancia_rota
-            
-            # Deposita o feromônio em cada segmento (i, j) da rota
-            for i in range(self.num_cidades):
-                cidade_i = rota[i]
-                cidade_j = rota[(i + 1) % self.num_cidades] # Pega a próxima (ou a 1ª se for a última)
-                
-                self.feromonios[cidade_i][cidade_j] += feromonio_a_depositar
-                self.feromonios[cidade_j][cidade_i] += feromonio_a_depositar # Caminho simétrico
+        # Evaporação (vetorizada)
+        self.feromonios *= (1.0 - self.rho)
+
+        # Depósito por cada formiga (vectorized-ish)
+        for rota in rotas:
+            dist = utils.calcular_distancia_total(rota, self.cidades, self.dist_matrix)
+            if dist <= 0 or not np.isfinite(dist):
+                continue
+            delta = (self.Q / dist)
+            # adiciona delta em cada aresta da rota (bidirecional)
+            for k in range(len(rota)):
+                i = rota[k]
+                j = rota[(k + 1) % len(rota)]
+                self.feromonios[i, j] += delta
+                self.feromonios[j, i] += delta
+
+        # Depósito extra (elitismo) pela melhor rota global encontrada
+        if self.best_route is not None and self.best_distance < float("inf"):
+            extra = (self.Q / max(self.best_distance, EPS)) * self.elite_weight
+            for k in range(len(self.best_route)):
+                a = self.best_route[k]
+                b = self.best_route[(k + 1) % len(self.best_route)]
+                self.feromonios[a, b] += extra
+                self.feromonios[b, a] += extra
+
+        # Limita feromônios (MMAS style)
+        self._clip_pheromones()
+
+    # -----------------------
+    # Execução principal
+    # -----------------------
+    def executar(self) -> Tuple[List[int], float]:
+        """
+        Executa o ACO completo e retorna (melhor_rota, melhor_distancia).
+        Também popula self.historico_melhores com o melhor global por iteração.
+        """
+        print(f"\n[ACO] Iniciando | Formigas={self.num_formigas} | Iter={self.num_iteracoes} | alfa={self.alfa} beta={self.beta} rho={self.rho}")
+        stagnation_counter = 0
+        self.best_route = None
+        self.best_distance = float("inf")
+        self.historico_melhores = []
+
+        for it in range(1, self.num_iteracoes + 1):
+            rotas = []
+            distancias = []
+
+            # construir soluções
+            for _ in range(self.num_formigas):
+                rota = self._construir_solucao()
+                rotas.append(rota)
+                d = utils.calcular_distancia_total(rota, self.cidades, self.dist_matrix)
+                distancias.append(d)
+
+            # encontra melhor da iteração
+            idx_min = int(np.argmin(distancias))
+            melhor_dist_iter = distancias[idx_min]
+            melhor_rota_iter = rotas[idx_min]
+
+            # atualiza melhor global
+            if melhor_dist_iter + EPS < self.best_distance:
+                self.best_distance = float(melhor_dist_iter)
+                self.best_route = list(melhor_rota_iter)
+                stagnation_counter = 0
+            else:
+                stagnation_counter += 1
+
+            # atualiza feromonios (evaporação + depósitos + elitismo)
+            self._atualizar_feromonio(rotas)
+
+            # guarda histórico
+            self.historico_melhores.append(self.best_distance)
+            if len(self.historico_melhores) > self.historico_max_length:
+                self.historico_melhores = self.historico_melhores[-self.historico_max_length :]
+
+            # Detecta estagnação e aplica reinicialização parcial de feromônio
+            if stagnation_counter >= self.stagnation_limit:
+                print(f"[ACO] Estagnação detectada (it={it}). Reinicializando parcialmente feromônios.")
+                self._reinicializar_parcial()
+                stagnation_counter = 0
+
+            # Log periódico
+            if it % 10 == 0 or it == self.num_iteracoes:
+                print(f"[ACO] Iter {it:4}: Melhor_it={melhor_dist_iter:.4f} | Melhor_global={self.best_distance:.4f}")
+
+        print("[ACO] Concluído.")
+        return (self.best_route or [], self.best_distance)

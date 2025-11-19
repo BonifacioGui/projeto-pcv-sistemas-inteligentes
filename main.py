@@ -1,177 +1,256 @@
-# --- 0. IMPORTAÇÕES ---
-# Importa nossas bibliotecas e classes
+# main.py - Versão Final Integrada
+# Requisitos atendidos:
+# - 3 Algoritmos (AG, ACO, SA) [cite: 8, 21]
+# - Estudo Paramétrico (AG Padrão vs AG Alta Mutação) 
+# - Robustez (30 execuções) [cite: 46]
+# - Gráficos de Convergência (Melhor e Média) [cite: 34]
+# - Teste Estatístico T-Student 
+
+import time
+import json
+import numpy as np
+from scipy import stats # Necessário para o teste T-Student
+
+# Importações dos módulos do projeto
 import parser_tsplib
 import utils
-import time 
-import numpy as np 
-import visualizacao # Nosso arquivo de gráficos
+import visualizacao
 from algoritmo_genetico import AlgoritmoGenetico
-from colonia_formigas import ACO 
-from recozimento_simulado import RecozimentoSimulado 
+from colonia_formigas import ACO
+from recozimento_simulado import RecozimentoSimulado
 
-# --- 1. DEFINIÇÃO DOS EXPERIMENTOS ---
-#
-#    Este é o seu "Painel de Controle".
-#    Basta modificar a lista 'experimentos_para_rodar' para
-#    executar qualquer uma das Análises do projeto.
-#
-# -----------------------------------------------------------------
-# --- 1. CONFIGURAÇÕES GERAIS ---
-NUM_EXECUCOES = 30
-ARQUIVO_DADOS = "data/eil101.tsp" # <-- MUDANÇA
-NUM_GERACOES = 500               # <-- MUDANÇA (aumentado para um problema maior)
-TAMANHO_POPULACAO = 50         
+# ======================================================================
+# 1. CONFIGURAÇÕES GERAIS
+# ======================================================================
 
-# --- Lista de Experimentos para Executar ---
+NUM_EXECUCOES = 30 
+ARQUIVO_DADOS = "data/eil101.tsp" # Certifique-se que este arquivo existe
+NUM_GERACOES = 500      # Critério de parada [cite: 20]
+TAMANHO_POPULACAO = 50
 
-# Análise 5: Escalabilidade do AG (rodando o MELHOR AG na base eil101)
+# Lista de experimentos para o Estudo Paramétrico 
 experimentos_para_rodar = [
     {
-        "nome": "AG-MelhorConfig-eil101",
+        "nome": "AG_Padrao",
         "algoritmo": "AG",
         "params": {
-            "metodo_selecao": "torneio",    # (Vencedor da Análise 2)
-            "metodo_mutacao": "inversao",   # (Vencedor da Análise 3)
-            "taxa_elitismo": 0.05,          # (Vencedor da Análise 4)
-            "taxa_mutacao": 0.01,           # (Parâmetro padrão)
-            "metodo_crossover": "ox"        # (Parâmetro padrão)
+            "taxa_mutacao": 0.01, 
+            "metodo_crossover": "ox",
+            "metodo_mutacao": "swap"
+        }
+    },
+    {
+        "nome": "AG_AltaMutacao", # Variação de parâmetro para análise
+        "algoritmo": "AG",
+        "params": {
+            "taxa_mutacao": 0.10, # 10% de mutação (vs 1% do padrão)
+            "metodo_crossover": "ox",
+            "metodo_mutacao": "swap"
+        }
+    },
+    {
+        "nome": "ACO_Padrao",
+        "algoritmo": "ACO",
+        "params": {
+            "num_formigas": 20,
+            "alfa": 1.0,
+            "beta": 2.5,
+            "rho": 0.1
+        }
+    },
+    {
+        "nome": "SA_Padrao",
+        "algoritmo": "SA",
+        "params": {
+            "temp_inicial": 1000,
+            "taxa_resfriamento": 0.995
         }
     }
 ]
 
-# --- 2. CARREGAMENTO DOS DADOS ---
-print("Carregando dados do problema...")
-# Chama o parser para ler o arquivo e pegar a lista de (x,y)
-minhas_cidades = parser_tsplib.carregar_cidades(ARQUIVO_DADOS)
-num_cidades = len(minhas_cidades)
-print(f"Arquivo: {ARQUIVO_DADOS} ({num_cidades} cidades)")
-print("---------------------------------")
+# ======================================================================
+# 2. CARREGAMENTO DOS DADOS
+# ======================================================================
+print(f"Carregando dados: {ARQUIVO_DADOS}...")
+try:
+    minhas_cidades = parser_tsplib.carregar_cidades(ARQUIVO_DADOS)
+    # Pré-calcula matriz de distâncias (Otimização de Desempenho) [cite: 41]
+    dist_matrix = utils.calcular_matriz_distancias(minhas_cidades)
+    num_cidades = len(minhas_cidades)
+    print(f"Carregado com sucesso: {num_cidades} cidades.")
+except Exception as e:
+    print(f"ERRO CRÍTICO: Não foi possível carregar o arquivo {ARQUIVO_DADOS}.")
+    print(f"Detalhe: {e}")
+    exit()
 
+# ======================================================================
+# 3. EXECUÇÃO DOS EXPERIMENTOS
+# ======================================================================
 
-# --- 3. LOOP DE EXECUÇÃO DOS EXPERIMENTOS ---
-# Dicionários para guardar os resultados de TODOS os experimentos
+# Dicionários globais para gráficos finais
 resultados_para_boxplot = {}
-resultados_para_convergencia = {}
+resultados_para_convergencia_melhor = {} # Para plotar depois se quiser tudo junto
+coleta_final_distancias = {} # Para o teste T-Student
 
-# Guarda a melhor rota encontrada entre TODOS os experimentos
 melhor_rota_geral = None
-melhor_distancia_geral = float('inf') # Começa com infinito
+melhor_distancia_geral = float("inf")
 
-# Loop principal: itera sobre a lista 'experimentos_para_rodar'
 for exp in experimentos_para_rodar:
     nome_exp = exp["nome"]
     algoritmo = exp["algoritmo"]
-    
-    print(f"\n===== INICIANDO EXPERIMENTO: {nome_exp} ({NUM_EXECUCOES} execuções) =====")
-    
-    # Listas para guardar os resultados das 30 execuções DESTE experimento
+    params = exp.get("params", {})
+
+    print(f"\n===== EXPERIMENTO: {nome_exp} ({algoritmo}) =====")
+
+    # Listas para armazenar as 30 execuções deste experimento
     resultados_distancia = []
     resultados_tempo = []
-    historico_30_execucoes = []
     
-    # Loop interno: Roda o experimento 30 vezes
-    for i in range(NUM_EXECUCOES):
-        print(f"--- Execução {i + 1} de {NUM_EXECUCOES} ---", end="") # 'end=""' imprime na mesma linha
-        start_time = time.time() # Marca o tempo de início
+    historico_30_melhores = [] # Guarda a evolução do MELHOR
+    historico_30_medias = []   # Guarda a evolução da MÉDIA (só AG)
+
+    for exe in range(NUM_EXECUCOES):
+        # Feedback visual simples
+        print(f".", end="", flush=True)
         
-        distancia_final = float('inf')
+        start_time = time.perf_counter()
+        distancia_final = float("inf")
         rota_final = []
         
-        # --- Bloco do ALGORITMO GENÉTICO ---
-        if algoritmo == "AG":
-            params = exp["params"] # Pega os parâmetros do AG (ex: 'metodo_selecao')
-            # Instancia o AG passando as configurações
-            ag = AlgoritmoGenetico(
-                cidades=minhas_cidades,
-                tamanho_populacao=TAMANHO_POPULACAO,
-                num_geracoes=NUM_GERACOES,
-                taxa_mutacao=params["taxa_mutacao"],
-                taxa_elitismo=params["taxa_elitismo"],
-                metodo_selecao=params["metodo_selecao"],
-                metodo_mutacao=params["metodo_mutacao"],
-                metodo_crossover=params["metodo_crossover"]
-            )
-            # Roda a evolução
-            melhor_solucao = ag.executar() 
-            # Salva os resultados
-            distancia_final = melhor_solucao.distancia
-            rota_final = melhor_solucao.rota
-            historico_30_execucoes.append(ag.historico_melhores)
+        try:
+            # --- INSTANCIAÇÃO E EXECUÇÃO ---
+            if algoritmo == "AG":
+                ag = AlgoritmoGenetico(
+                    cidades=minhas_cidades,
+                    tamanho_populacao=TAMANHO_POPULACAO,
+                    num_geracoes=NUM_GERACOES,
+                    taxa_mutacao=params.get("taxa_mutacao", 0.01),
+                    taxa_elitismo=0.05,
+                    metodo_selecao="torneio",
+                    metodo_crossover=params.get("metodo_crossover", "ox"),
+                    metodo_mutacao=params.get("metodo_mutacao", "swap"),
+                    dist_matrix=dist_matrix
+                )
+                melhor = ag.executar()
+                
+                distancia_final = melhor.distancia
+                rota_final = melhor.rota
+                
+                # Coleta históricos (Melhor e Média)
+                historico_30_melhores.append(ag.historico_melhores)
+                historico_30_medias.append(ag.historico_medias)
 
-        # --- Bloco da COLÔNIA DE FORMIGAS ---
-        elif algoritmo == "ACO":
-            aco = ACO(
-                cidades=minhas_cidades,
-                num_formigas=TAMANHO_POPULACAO,
-                num_iteracoes=NUM_GERACOES,
-                alfa=1.0, beta=5.0, rho=0.1, Q=100 # (Valores padrão)
-            )
-            # Roda a evolução
-            rota_final, distancia_final = aco.executar()
-            # Salva os resultados
-            historico_30_execucoes.append(aco.historico_melhores)
+            elif algoritmo == "ACO":
+                aco = ACO(
+                    cidades=minhas_cidades,
+                    num_formigas=params.get("num_formigas", 20),
+                    num_iteracoes=NUM_GERACOES, # Usamos num_geracoes como iterações para ser justo
+                    alfa=params.get("alfa", 1.0),
+                    beta=params.get("beta", 2.5),
+                    rho=params.get("rho", 0.1)
+                )
+                rota_final, distancia_final = aco.executar()
+                
+                historico_30_melhores.append(aco.historico_melhores)
+                # ACO não tem "média da população" da mesma forma que AG, enviamos None depois
 
-        # --- Bloco do RECOZIMENTO SIMULADO ---
-        elif algoritmo == "SA":
-            sa = RecozimentoSimulado(
-                cidades=minhas_cidades,
-                temp_inicial=10000, temp_final=1, taxa_resfriamento=0.995 # (Valores padrão)
-            )
-            # Roda a evolução
-            rota_final, distancia_final = sa.executar()
-            # Salva os resultados
-            historico_30_execucoes.append(sa.historico_melhores)
-        
-        # --- Coleta de dados da execução ---
-        end_time = time.time()
-        tempo_execucao = end_time - start_time
-        
-        # Salva a distância e o tempo desta execução
+            elif algoritmo == "SA":
+                sa = RecozimentoSimulado(
+                    cidades=minhas_cidades,
+                    temp_inicial=params.get("temp_inicial", 1000),
+                    max_iterations=NUM_GERACOES * TAMANHO_POPULACAO, # Ajuste de esforço computacional
+                    dist_matrix=dist_matrix
+                )
+                rota_final, distancia_final = sa.executar()
+                
+                historico_30_melhores.append(sa.historico_melhores)
+
+        except Exception as e:
+            print(f"\n[ERRO na execução {exe}: {e}]")
+            distancia_final = float("nan")
+
+        # --- COLETA DE TEMPO E MELHOR GLOBAL ---
+        tempo_execucao = time.perf_counter() - start_time
         resultados_distancia.append(distancia_final)
         resultados_tempo.append(tempo_execucao)
-        
-        # Verifica se esta é a MELHOR ROTA GERAL já vista
+
         if distancia_final < melhor_distancia_geral:
             melhor_distancia_geral = distancia_final
             melhor_rota_geral = rota_final
-        
-        print(f" -> Distância = {distancia_final:.2f} (Tempo: {tempo_execucao:.2f}s)")
 
-    # --- 4. RESUMO ESTATÍSTICO DO EXPERIMENTO ---
-    print(f"\n--- Resumo Estatístico para: {nome_exp} ---")
-    print(f"  Distância Média:   {np.mean(resultados_distancia):.2f}")
-    print(f"  Distância Desv.Padrão: {np.std(resultados_distancia):.2f} (Robustez)")
-    print(f"  Distância Melhor (Min):  {np.min(resultados_distancia):.2f}")
-    print(f"  Tempo Médio:   {np.mean(resultados_tempo):.2f}s")
-    
-    # Salva os resultados agregados para os gráficos finais
+    print(f"\n-> Média Distância: {np.nanmean(resultados_distancia):.2f} | Tempo Médio: {np.nanmean(resultados_tempo):.4f}s")
+
+    # --- ARMAZENAMENTO PARA GRÁFICOS E ESTATÍSTICA ---
     resultados_para_boxplot[nome_exp] = resultados_distancia
-    resultados_para_convergencia[nome_exp] = historico_30_execucoes
+    coleta_final_distancias[nome_exp] = resultados_distancia # Guarda para o teste T
 
-# --- 5. GERAÇÃO DE GRÁFICOS FINAIS ---
-print("\n===== GERANDO GRÁFICOS COMPARATIVOS =====")
+    # --- GERAÇÃO DO GRÁFICO DE CONVERGÊNCIA (POR EXPERIMENTO) ---
+    # Aqui atendemos o requisito: "mostrar como a melhor solução e a média evoluem" [cite: 34]
+    if algoritmo == "AG":
+        visualizacao.plotar_convergencia(
+            historico_30_melhores, 
+            historico_30_medias, 
+            f"convergencia_{nome_exp}.png"
+        )
+    else:
+        visualizacao.plotar_convergencia(
+            historico_30_melhores, 
+            None, 
+            f"convergencia_{nome_exp}.png"
+        )
 
-# NOVO: Limpa o nome do arquivo de dados para usar nos títulos dos gráficos
-# "data/st70.tsp" -> "st70"
-nome_base_arquivo = ARQUIVO_DADOS.replace("data/", "").replace(".tsp", "")
+# ======================================================================
+# 4. GERAÇÃO DE GRÁFICOS FINAIS
+# ======================================================================
 
-# 5.1. Gerar Gráfico de Convergência para cada experimento
-for nome_exp, historico in resultados_para_convergencia.items():
-    # Cria um nome de arquivo limpo, ex: "convergencia_st70_AG-Crossover-OX.png"
-    nome_grafico = f"convergencia_{nome_base_arquivo}_{nome_exp}.png"
-    visualizacao.plotar_convergencia(historico, nome_grafico)
+# Boxplot comparativo [cite: 35]
+visualizacao.plotar_boxplot_comparativo(
+    resultados_para_boxplot,
+    "boxplot_comparativo.png"
+)
 
-# 5.2. Gerar UM Boxplot comparando TODOS os experimentos
-# CORRIGIDO: Usa o nome_base_arquivo limpo
-nome_boxplot = f"boxplot_{nome_base_arquivo}.png"
-visualizacao.plotar_boxplot_comparativo(resultados_para_boxplot, nome_boxplot)
-
-# 5.3. Gerar UM gráfico da MELHOR ROTA encontrada
+# Visualização da Melhor Rota encontrada [cite: 40]
 if melhor_rota_geral:
-    # CORRIGIDO: Usa o nome_base_arquivo limpo
-    nome_rota = f"melhor_rota_{nome_base_arquivo}.png"
-    visualizacao.plotar_rota(melhor_rota_geral, minhas_cidades, nome_rota)
-else:
-    print("Nenhuma rota foi gerada para plotar.")
+    visualizacao.plotar_rota(
+        melhor_rota_geral,
+        minhas_cidades,
+        "melhor_rota_encontrada.png"
+    )
 
-print("\nTodos os experimentos e gráficos foram concluídos.")
+# ======================================================================
+# 5. ANÁLISE ESTATÍSTICA (TESTE T-STUDENT)
+# ======================================================================
+# Requisito: "Aplicar testes estatísticos (ex. t-student) para validar as escolhas" 
+
+print("\n===== ANÁLISE ESTATÍSTICA (T-STUDENT) =====")
+print("Comparando AG_Padrao vs AG_AltaMutacao para validar parâmetros...")
+
+if "AG_Padrao" in coleta_final_distancias and "AG_AltaMutacao" in coleta_final_distancias:
+    data_A = np.array(coleta_final_distancias["AG_Padrao"])
+    data_B = np.array(coleta_final_distancias["AG_AltaMutacao"])
+    
+    # Limpeza de NaNs (caso alguma execução tenha falhado)
+    data_A = data_A[np.isfinite(data_A)]
+    data_B = data_B[np.isfinite(data_B)]
+
+    t_stat, p_valor = stats.ttest_ind(data_A, data_B)
+    
+    print(f"Resultados:")
+    print(f"  Média AG_Padrao: {np.mean(data_A):.2f}")
+    print(f"  Média AG_AltaMutacao: {np.mean(data_B):.2f}")
+    print(f"  Estatística T: {t_stat:.4f}")
+    print(f"  P-Valor: {p_valor:.4e}")
+    
+    alpha = 0.05
+    if p_valor < alpha:
+        print(f"  -> CONCLUSÃO: Diferença SIGNIFICATIVA (p < 0.05).")
+        if np.mean(data_A) < np.mean(data_B):
+            print("  -> O 'AG_Padrao' foi estatisticamente superior.")
+        else:
+            print("  -> O 'AG_AltaMutacao' foi estatisticamente superior.")
+    else:
+        print("  -> CONCLUSÃO: Não há diferença estatística significativa entre os parâmetros.")
+else:
+    print("Não foi possível realizar o teste (experimentos não encontrados).")
+
+print("\nFim da execução.")

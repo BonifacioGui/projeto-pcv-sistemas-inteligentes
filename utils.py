@@ -1,61 +1,95 @@
 import math
 import random
+import numpy as np
 
-# --- FUNÇÃO DE CÁLCULO DE DISTÂNCIA (EUCLIDIANA) ---
+# ------------------------------------------------------------
+# 1. DISTÂNCIA EUCLIDIANA OTIMIZADA
+#    Usando math.hypot → implementado em C → muito mais rápido
+# ------------------------------------------------------------
 
 def calcular_distancia(cidadeA, cidadeB):
     """
-    Calcula a distância Euclidiana entre duas cidades (pontos).
+    Calcula a distância Euclidiana entre duas cidades.
     cidadeA e cidadeB são tuplas (x, y).
-    """ 
-
-    # Fórmula: raiz_quadrada((x2 - x1)^2 + (y2 - y1)^2)
-    return math.sqrt((cidadeB[0] - cidadeA[0])**2 + (cidadeB[1] - cidadeA[1])**2)
-
-
-# --- FUNÇÃO DE APTIDÃO (FITNESS FUNCTION) ---
-
-def calcular_distancia_total(rota, cidades):
+    Usa math.hypot, que é otimizado em C.
     """
-    Calcula a distância total de uma rota (permutação de cidades).
-    Esta é a nossa principal FUNÇÃO DE APTIDÃO (Fitness Function).
-    
-    'rota' é uma lista de IDs (índices), ex: [0, 4, 2, 1, 3]
-    'cidades' é a lista de tuplas (x, y) que você carregou do parser.
+    return math.hypot(cidadeB[0] - cidadeA[0], cidadeB[1] - cidadeA[1])
+
+
+# ------------------------------------------------------------
+# 2. MATRIZ DE DISTÂNCIAS PRÉ-CALCULADA (para alta performance)
+# ------------------------------------------------------------
+
+def calcular_matriz_distancias(cidades):
     """
-    distancia_total = 0
+    Cria e retorna uma matriz NxN contendo todas as distâncias 
+    pré-calculadas entre as cidades.
     
-    # Itera pela rota, somando a distância entre cidades consecutivas
-    for i in range(len(rota)):
-        
-        # Pega as coordenadas da cidade atual
-        cidade_atual = cidades[rota[i]]
-        
-        # Pega a próxima cidade na rota.
-        # Se for a última cidade, a próxima é a cidade INICIAL.
-        if i == len(rota) - 1:
-            proxima_cidade = cidades[rota[0]] # Volta à origem
-        else:
-            proxima_cidade = cidades[rota[i+1]]
+    ESSENCIAL para acelerar AG, ACO e SA.
+    """
+
+    num_cidades = len(cidades)
+    matriz = np.zeros((num_cidades, num_cidades), dtype=float)
+
+    for i in range(num_cidades):
+        xi, yi = cidades[i]
+        for j in range(i + 1, num_cidades):
+            xj, yj = cidades[j]
             
-        # Acumula a distância
-        distancia_total += calcular_distancia(cidade_atual, proxima_cidade)
-        
-    return distancia_total
+            dist = math.hypot(xj - xi, yj - yi)
+            matriz[i][j] = dist
+            matriz[j][i] = dist  # simétrico
+
+    return matriz
 
 
-# --- FUNÇÃO AUXILIAR DO ALGORITMO GENÉTICO ---
+# ------------------------------------------------------------
+# 3. DISTÂNCIA TOTAL DA ROTA (versão rápida usando matriz)
+# ------------------------------------------------------------
+
+def calcular_distancia_total(rota, cidades, dist_matrix=None):
+    """
+    Calcula a distância total de uma rota.
+
+    OTIMIZAÇÃO:
+       - Se dist_matrix for fornecida, usa distâncias pré-calculadas.
+       - Caso contrário, faz o cálculo tradicional (mais lento).
+
+    Parâmetros:
+        rota        → lista de índices (ex: [0, 4, 2, ...])
+        cidades     → lista de tuplas (x, y)
+        dist_matrix → matriz NxN pré-calculada (opcional)
+    """
+
+    total = 0.0
+    n = len(rota)
+
+    # --- Caminho RÁPIDO: usando matriz de distâncias ---
+    if dist_matrix is not None:
+        for i in range(n):
+            a = rota[i]
+            b = rota[(i + 1) % n]  # ciclo fechado
+            total += dist_matrix[a][b]
+        return total
+
+    # --- Caminho lento: cálculo bruto ---
+    for i in range(n):
+        cidadeA = cidades[rota[i]]
+        cidadeB = cidades[rota[(i + 1) % n]]
+        total += calcular_distancia(cidadeA, cidadeB)
+
+    return total
+
+
+# ------------------------------------------------------------
+# 4. CRIA UMA ROTA ALEATÓRIA (permuta perfeitamente uniforme)
+# ------------------------------------------------------------
 
 def criar_rota_aleatoria(num_cidades):
     """
-    Cria uma rota aleatória (um indivíduo) para a população inicial.
-    Garante que cada cidade seja visitada exatamente uma vez.
+    Cria uma rota aleatória, garantindo que todas as cidades
+    aparecem exatamente uma vez.
     """
-    # 1. Cria uma lista ordenada: [0, 1, 2, ..., 69]
     rota = list(range(num_cidades))
-    
-    # 2. Embaralha a lista aleatoriamente
     random.shuffle(rota)
-    
-    # 3. Retorna a lista embaralhada, ex: [42, 1, 30, ...]
     return rota
