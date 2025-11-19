@@ -18,25 +18,34 @@ from recozimento_simulado import RecozimentoSimulado
 # -----------------------------------------------------------------
 # --- 1. CONFIGURAÇÕES GERAIS ---
 NUM_EXECUCOES = 30
-ARQUIVO_DADOS = "data/eil101.tsp" # <-- MUDANÇA
-NUM_GERACOES = 500               # <-- MUDANÇA (aumentado para um problema maior)
+ARQUIVO_DADOS = "data/ch130.tsp" # <-- FINAL DATASET (130 CIDADES)
+NUM_GERACOES = 1000              # <-- AUMENTADO (1000 GERAÇÕES)
 TAMANHO_POPULACAO = 50         
 
 # --- Lista de Experimentos para Executar ---
 
-# --- Lista de Experimentos para Executar ---
-
-# Análise 8: Escalabilidade do ACO e SA na base eil101
+# Análise 9: Comparação Cruzada de Escalabilidade (AG vs ACO vs SA na ch130)
 experimentos_para_rodar = [
     {
-        "nome": "ACO-eil101",
-        "algoritmo": "ACO",
-        "params": {} # ACO usa os parâmetros padrão (ACO_ALFA, ACO_BETA, etc.)
+        "nome": "AG-Melhor-ch130",
+        "algoritmo": "AG",
+        "params": {
+            "metodo_selecao": "torneio",    # (Melhor AG)
+            "metodo_mutacao": "inversao",
+            "taxa_elitismo": 0.05,
+            "taxa_mutacao": 0.01,
+            "metodo_crossover": "ox"
+        }
     },
     {
-        "nome": "SA-eil101",
+        "nome": "ACO-ch130",
+        "algoritmo": "ACO",
+        "params": {} # Usa os parâmetros padrão (melhores para o PCV)
+    },
+    {
+        "nome": "SA-ch130",
         "algoritmo": "SA",
-        "params": {} # SA usa os parâmetros padrão (SA_TEMP_INICIAL, etc.)
+        "params": {} # Usa os parâmetros padrão (melhores para o PCV)
     }
 ]
 
