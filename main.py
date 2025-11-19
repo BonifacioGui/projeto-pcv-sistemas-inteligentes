@@ -23,7 +23,7 @@ from recozimento_simulado import RecozimentoSimulado
 # 1. CONFIGURAÇÕES GERAIS
 # ======================================================================
 
-NUM_EXECUCOES = 30 
+NUM_EXECUCOES = 30
 ARQUIVO_DADOS = "data/eil101.tsp" # Certifique-se que este arquivo existe
 NUM_GERACOES = 500      # Critério de parada [cite: 20]
 TAMANHO_POPULACAO = 50
@@ -110,9 +110,10 @@ for exp in experimentos_para_rodar:
     historico_30_medias = []   # Guarda a evolução da MÉDIA (só AG)
 
     for exe in range(NUM_EXECUCOES):
-        # Feedback visual simples
-        print(f".", end="", flush=True)
+        # Feedback detalhado: Mostra qual execução está rodando
+        print(f"  > [{nome_exp}] Execução {exe + 1}/{NUM_EXECUCOES}...", end="", flush=True)
         
+        start_time = time.perf_counter()        
         start_time = time.perf_counter()
         distancia_final = float("inf")
         rota_final = []
@@ -171,8 +172,11 @@ for exp in experimentos_para_rodar:
 
         # --- COLETA DE TEMPO E MELHOR GLOBAL ---
         tempo_execucao = time.perf_counter() - start_time
+        
+        # Feedback de conclusão da linha
+        print(f" OK! (Tempo: {tempo_execucao:.2f}s | Dist: {distancia_final:.2f})")
+
         resultados_distancia.append(distancia_final)
-        resultados_tempo.append(tempo_execucao)
 
         if distancia_final < melhor_distancia_geral:
             melhor_distancia_geral = distancia_final
