@@ -59,16 +59,9 @@ def garantir_pasta(caminho):
         os.makedirs(caminho)
 
 
-# ======================================================================
-# CSS DARK MODE (gerado automaticamente)
-# ======================================================================
-
 garantir_pasta("resultados")
 
 CSS_CONTENT = """
-/* ============================================================
-   DARK MODE — Estilo profissional para relatórios e dashboards
-   ============================================================ */
 
 :root {
     --bg-main: #111418;
