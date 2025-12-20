@@ -24,9 +24,9 @@ from recozimento_simulado import RecozimentoSimulado
 # 1. CONFIGURAÇÕES (MODO DE TESTE)
 # ================================================================
 
-NUM_EXECUCOES     = 2     # TESTE (final: 30)
-NUM_GERACOES      = 50    # TESTE (final: 500)
-TAMANHO_POPULACAO = 20    # TESTE (final: 50)
+NUM_EXECUCOES     = 30     # TESTE (final: 30)
+NUM_GERACOES      = 500    # TESTE (final: 500)
+TAMANHO_POPULACAO = 50    # TESTE (final: 50)
 
 INSTANCIAS = [
     "data/st70.tsp",
