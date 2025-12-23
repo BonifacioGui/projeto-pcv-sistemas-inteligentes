@@ -162,14 +162,21 @@ class AlgoritmoGenetico:
     # -----------------------
     # Criação / Inicialização
     # -----------------------
-    def _criar_populacao_inicial(self):
-        """Gera a população inicial com rotas aleatórias."""
-        self.populacao = []
-        for _ in range(self.tamanho_populacao):
-            rota = utils.criar_rota_aleatoria(self.num_cidades)
-            # PARA APRESENTAÇÃO: "Cada indivíduo calcula sua distância ao ser criado."
-            self.populacao.append(Individuo(rota, self.cidades, self.dist_matrix, self.epsilon))
+    # Dentro de algoritmo_genetico.py
 
+    def _criar_populacao_inicial(self):
+        self.populacao = []
+        
+        # --- O PULO DO GATO: Inserir 1 indivíduo 'Gênio' ---
+        # Isso coloca o AG no mesmo patamar inicial do SA.
+        rota_genia = utils.gerar_rota_vizinho_mais_proximo(self.cidades, self.dist_matrix)
+        ind_genio = Individuo(rota_genia, self.cidades, self.dist_matrix, self.epsilon)
+        self.populacao.append(ind_genio)
+        
+        # O resto da população (N-1) continua aleatória para manter a diversidade genética
+        for _ in range(self.tamanho_populacao - 1):
+            rota = utils.criar_rota_aleatoria(self.num_cidades)
+            self.populacao.append(Individuo(rota, self.cidades, self.dist_matrix, self.epsilon))
     # -----------------------
     # Seleções
     # -----------------------

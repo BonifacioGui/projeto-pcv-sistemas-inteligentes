@@ -93,3 +93,34 @@ def criar_rota_aleatoria(num_cidades):
     rota = list(range(num_cidades))
     random.shuffle(rota)
     return rota
+# No final do arquivo utils.py
+
+def gerar_rota_vizinho_mais_proximo(cidades, dist_matrix=None):
+    """
+    Gera uma rota gulosa (Vizinho Mais Próximo).
+    Começa na cidade 0 e vai sempre para a mais próxima não visitada.
+    """
+    num_cidades = len(cidades)
+    nao_visitadas = set(range(1, num_cidades))
+    rota = [0] # Começa na cidade 0
+    atual = 0
+
+    while nao_visitadas:
+        mais_proxima = -1
+        min_dist = float('inf')
+
+        for candidata in nao_visitadas:
+            if dist_matrix is not None:
+                d = dist_matrix[atual][candidata]
+            else:
+                d = calcular_distancia(cidades[atual], cidades[candidata])
+            
+            if d < min_dist:
+                min_dist = d
+                mais_proxima = candidata
+        
+        rota.append(mais_proxima)
+        nao_visitadas.remove(mais_proxima)
+        atual = mais_proxima
+        
+    return rota

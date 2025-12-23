@@ -23,10 +23,10 @@ from recozimento_simulado import RecozimentoSimulado
 # ================================================================
 # 1. CONFIGURAÇÕES GERAIS
 # ================================================================
-# Ajuste estes valores para o teste final (Recomendado: 30 / 500 / 50)
-NUM_EXECUCOES     = 2 # 30
-NUM_GERACOES      = 2 # 500
-TAMANHO_POPULACAO = 10 # 50
+
+NUM_EXECUCOES     = 30     # TESTE (final: 30)
+NUM_GERACOES      = 500    # TESTE (final: 500)
+TAMANHO_POPULACAO = 50    # TESTE (final: 50)
 
 INSTANCIAS = [
     "data/st70.tsp",

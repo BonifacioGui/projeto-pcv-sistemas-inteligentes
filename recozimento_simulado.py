@@ -180,44 +180,29 @@ class RecozimentoSimulado:
     # -------------------------
     def executar(self) -> Tuple[List[int], float]:
         """
-        Executa o SA e retorna (melhor_rota, melhor_distancia).
-        Atualiza self.historico_melhores com amostragem (cada record_interval movimentos).
+        Executa o SA com Inicialização ALEATÓRIA (Academicamente Justo).
         """
-        # 1. Inicialização
-        # solução inicial: nearest neighbor a partir de vários pontos e escolhe melhor
-        best_init = None
-        best_init_d = float("inf")
-        # tentar algumas sementes de partida (0, n//3, 2n//3) para robustez
-        starts = [0]
-        if self.n > 3:
-            starts += [self.n // 3, (2 * self.n) // 3]
-        for s in starts:
-            cand = self._nearest_neighbor(start=s)
-            d = self._calc_distance(cand)
-            if d < best_init_d:
-                best_init_d = d
-                best_init = cand
-
-        if best_init is None:
-            # fallback: rota aleatória
-            best_init = utils.criar_rota_aleatoria(self.n)
-            best_init_d = self._calc_distance(best_init)
-
-        self.solucao_atual = best_init[:]
-        self.distancia_atual = best_init_d
-        self.melhor_solucao_global = best_init[:]
-        self.melhor_distancia_global = best_init_d
-
+        # --- CORREÇÃO ACADÊMICA: Inicialização Aleatória ---
+        # Removemos o Nearest Neighbor para que o SA comece do zero, igual ao AG e ACO.
+        
+        self.solucao_atual = utils.criar_rota_aleatoria(self.n)
+        self.distancia_atual = self._calc_distance(self.solucao_atual)
+        
+        # Define o melhor global inicial como a solução aleatória gerada
+        self.melhor_solucao_global = self.solucao_atual[:]
+        self.melhor_distancia_global = self.distancia_atual
+        
+        # Configuração inicial
         temperatura = float(self.temp_inicial)
         total_moves = 0
         self.historico_melhores = [self.melhor_distancia_global]
 
-        # loop principal: por temperatura
+        # Loop principal (o resto do código permanece igual)
         while temperatura > self.temp_final:
             for _ in range(self.moves_per_temp):
                 total_moves += 1
 
-                # gera vizinho
+                # Gera vizinho (2-opt ou swap)
                 if self.use_2opt:
                     viz, i, j = self._neighbor_2opt(self.solucao_atual)
                     delta = self._delta_2opt(self.solucao_atual, i, j)
@@ -225,41 +210,37 @@ class RecozimentoSimulado:
                     viz, i, j = self._neighbor_swap(self.solucao_atual)
                     delta = self._delta_swap(self.solucao_atual, i, j)
 
-                # decide aceitação
+                # Critério de Aceitação (Metropolis)
                 if delta < 0:
-                    # movimento melhor
                     self.solucao_atual = viz
                     self.distancia_atual += delta
                 else:
-                    # probabilidade de aceitação
                     try:
                         prob = math.exp(-delta / temperatura)
                     except OverflowError:
                         prob = 0.0
+                    
                     if self._rng.random() < prob:
                         self.solucao_atual = viz
                         self.distancia_atual += delta
 
-                # atualiza melhor global
+                # Atualiza o melhor global
                 if self.distancia_atual < self.melhor_distancia_global:
                     self.melhor_distancia_global = self.distancia_atual
                     self.melhor_solucao_global = self.solucao_atual[:]
 
-                # registra histórico em intervalos para não explodir memória
+                # Histórico
                 if total_moves % self.record_interval == 0:
                     self.historico_melhores.append(self.melhor_distancia_global)
 
-                # checa limite máximo de movimentos
                 if self.max_iterations is not None and total_moves >= self.max_iterations:
                     break
 
-            # resfria
             temperatura *= self.cooling_rate
-
             if self.max_iterations is not None and total_moves >= self.max_iterations:
                 break
 
-        # uma última gravação do melhor
+        # Gravação final
         if self.historico_melhores[-1] != self.melhor_distancia_global:
             self.historico_melhores.append(self.melhor_distancia_global)
 
