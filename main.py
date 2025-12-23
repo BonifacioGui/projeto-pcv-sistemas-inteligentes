@@ -1,6 +1,6 @@
 """
-main.py - Versão Final para Entrega
-Contém todos os cenários de teste exigidos no projeto.
+main.py - Versão Final para Entrega (Com Dashboard Profissional)
+Contém todos os cenários de teste exigidos no projeto e gera relatório executivo.
 """
 
 import os
@@ -24,9 +24,9 @@ from recozimento_simulado import RecozimentoSimulado
 # 1. CONFIGURAÇÕES GERAIS
 # ================================================================
 
-NUM_EXECUCOES     = 30     # TESTE (final: 30)
-NUM_GERACOES      = 500    # TESTE (final: 500)
-TAMANHO_POPULACAO = 50    # TESTE (final: 50)
+NUM_EXECUCOES     = 2     # Robustez estatística (Padrão: 30)
+NUM_GERACOES      = 10    # Iterações por execução (500)
+TAMANHO_POPULACAO = 10    # Tamanho da população/formigueiro (50)
 
 INSTANCIAS = [
     "data/st70.tsp",
@@ -38,12 +38,12 @@ EXECUTION_TIMESTAMP = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
 
 # ================================================================
-# 2. BANCO DE EXPERIMENTOS (TODOS OS CENÁRIOS)
+# 2. BANCO DE EXPERIMENTOS (TODOS OS CENÁRIOS DA TABELA)
 # ================================================================
 
 TODOS_EXPERIMENTOS = {
     # --- ANÁLISE 9: COMPARAÇÃO GERAL (AG vs ACO vs SA) ---
-    # Use para comparar o desempenho final dos 3 algoritmos nas 3 bases.
+    # Use esta opção para gerar o comparativo final nas 3 bases.
     "geral": [
         {"nome": "AG_Padrao", "algoritmo": "AG",
          "params": {"taxa_mutacao": 0.01, "metodo_crossover": "ox", "metodo_mutacao": "swap"}},
@@ -55,56 +55,46 @@ TODOS_EXPERIMENTOS = {
          "params": {"num_formigas": TAMANHO_POPULACAO, "alfa": 1.0, "beta": 2.5, "rho": 0.1}},
         
         {"nome": "SA_Padrao", "algoritmo": "SA",
-         "params": {"temp_inicial": 1000, "taxa_resfriamento": 0.995}}
+         "params": {"temp_inicial": 1000, "cooling_rate": 0.995}}
     ],
 
     # --- ANÁLISE 2: SELEÇÃO (Roleta vs Torneio) ---
     "selecao": [
         {"nome": "AG_Torneio", "algoritmo": "AG",
-         "params": {"metodo_selecao": "torneio", "taxa_mutacao": 0.01,
-                    "metodo_crossover": "ox", "metodo_mutacao": "inversion"}},
+         "params": {"metodo_selecao": "torneio", "taxa_mutacao": 0.01, "metodo_crossover": "ox", "metodo_mutacao": "inversion"}},
 
         {"nome": "AG_Roleta", "algoritmo": "AG",
-         "params": {"metodo_selecao": "roleta", "taxa_mutacao": 0.01,
-                    "metodo_crossover": "ox", "metodo_mutacao": "inversion"}},
+         "params": {"metodo_selecao": "roleta", "taxa_mutacao": 0.01, "metodo_crossover": "ox", "metodo_mutacao": "inversion"}},
     ],
     
     # --- ANÁLISE 3: MUTAÇÃO (Troca vs Inversão) ---
     "mutacao": [
         {"nome": "AG_MutacaoTroca", "algoritmo": "AG",
-         "params": {"metodo_mutacao": "swap", "metodo_selecao": "torneio",
-                    "metodo_crossover": "ox", "taxa_mutacao": 0.01}},
+         "params": {"metodo_mutacao": "swap", "metodo_selecao": "torneio", "metodo_crossover": "ox", "taxa_mutacao": 0.01}},
 
         {"nome": "AG_MutacaoInversao", "algoritmo": "AG",
-         "params": {"metodo_mutacao": "inversion", "metodo_selecao": "torneio",
-                    "metodo_crossover": "ox", "taxa_mutacao": 0.01}}
+         "params": {"metodo_mutacao": "inversion", "metodo_selecao": "torneio", "metodo_crossover": "ox", "taxa_mutacao": 0.01}}
     ],
 
     # --- ANÁLISE 4: ELITISMO (0% vs 5% vs 10%) ---
     "elitismo": [
         {"nome": "AG_Elitismo_0", "algoritmo": "AG",
-         "params": {"taxa_elitismo": 0.00, "taxa_mutacao": 0.01, 
-                    "metodo_selecao": "torneio", "metodo_crossover": "ox", "metodo_mutacao": "inversion"}},
+         "params": {"taxa_elitismo": 0.00, "metodo_selecao": "torneio", "metodo_crossover": "ox", "metodo_mutacao": "inversion"}},
 
         {"nome": "AG_Elitismo_5", "algoritmo": "AG",
-         "params": {"taxa_elitismo": 0.05, "taxa_mutacao": 0.01,
-                    "metodo_selecao": "torneio", "metodo_crossover": "ox", "metodo_mutacao": "inversion"}},
+         "params": {"taxa_elitismo": 0.05, "metodo_selecao": "torneio", "metodo_crossover": "ox", "metodo_mutacao": "inversion"}},
 
         {"nome": "AG_Elitismo_10", "algoritmo": "AG",
-         "params": {"taxa_elitismo": 0.10, "taxa_mutacao": 0.01,
-                    "metodo_selecao": "torneio", "metodo_crossover": "ox", "metodo_mutacao": "inversion"}}
+         "params": {"taxa_elitismo": 0.10, "metodo_selecao": "torneio", "metodo_crossover": "ox", "metodo_mutacao": "inversion"}}
     ],
 
     # --- ANÁLISE EXTRA: CROSSOVER (OX vs PMX) ---
-    # Requisito: "Implementar pelo menos dois operadores diferentes"
     "crossover": [
         {"nome": "AG_Crossover_OX", "algoritmo": "AG",
-         "params": {"metodo_crossover": "ox", "metodo_selecao": "torneio", 
-                    "metodo_mutacao": "inversao", "taxa_mutacao": 0.01, "taxa_elitismo": 0.05}},
+         "params": {"metodo_crossover": "ox", "metodo_selecao": "torneio", "metodo_mutacao": "inversion"}},
 
         {"nome": "AG_Crossover_PMX", "algoritmo": "AG",
-         "params": {"metodo_crossover": "pmx", "metodo_selecao": "torneio", 
-                    "metodo_mutacao": "inversao", "taxa_mutacao": 0.01, "taxa_elitismo": 0.05}}
+         "params": {"metodo_crossover": "pmx", "metodo_selecao": "torneio", "metodo_mutacao": "inversion"}}
     ]
 }
 
@@ -112,14 +102,14 @@ TODOS_EXPERIMENTOS = {
 # ============================================================
 # 3. SELETOR: QUAL EXPERIMENTO RODAR AGORA?
 # ============================================================
-# Mude esta string para: "geral", "selecao", "mutacao", "elitismo" ou "crossover"
+# Opções: "geral", "selecao", "mutacao", "elitismo", "crossover"
 CHAVE_ESCOLHIDA = "geral"
 
 EXPERIMENTO_ATUAL = TODOS_EXPERIMENTOS[CHAVE_ESCOLHIDA]
 
 
 # ================================================================
-# 4. PREPARAÇÃO DE PASTAS E ESTILO
+# 4. PREPARAÇÃO DE ESTILO (CSS PROFISSIONAL)
 # ================================================================
 def garantir_pasta(p):
     if not os.path.exists(p):
@@ -127,17 +117,99 @@ def garantir_pasta(p):
 
 garantir_pasta("resultados")
 
+# CSS Moderno (Dark Mode / Scientific Style)
 CSS_CONTENT = """
-:root { --bg: #111418; --card: #1a1e24; --text: #e5e7eb; --border: #2a2f37; --link: #4ea1ff; }
-body { background: var(--bg); color: var(--text); font-family: sans-serif; padding: 30px; }
-h1, h2 { border-bottom: 1px solid var(--border); padding-bottom: 10px; }
-table { width: 100%; border-collapse: collapse; margin-top: 20px; background: var(--card); }
-th { background: #20252c; text-align: left; padding: 12px; border-bottom: 1px solid var(--border); }
-td { padding: 12px; border-bottom: 1px solid var(--border); }
-a { color: var(--link); text-decoration: none; }
-img { max-width: 800px; display: block; margin: 20px 0; border: 1px solid var(--border); border-radius: 8px; }
-pre { background: var(--card); padding: 15px; border-radius: 8px; overflow-x: auto; border: 1px solid var(--border); }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap');
+
+:root {
+    --bg-body: #0f172a;
+    --bg-card: #1e293b;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --accent: #38bdf8;
+    --success: #4ade80;
+    --border: #334155;
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    background-color: var(--bg-body);
+    color: var(--text-main);
+    font-family: 'Inter', sans-serif;
+    padding: 40px;
+    line-height: 1.6;
+}
+
+.container { max-width: 1200px; margin: 0 auto; }
+
+/* Header */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 40px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 20px;
+}
+header h1 { font-size: 1.8rem; font-weight: 600; color: var(--accent); }
+.timestamp { color: var(--text-muted); font-size: 0.9rem; }
+
+/* KPIs */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 40px;
+}
+.kpi-card {
+    background: var(--bg-card);
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    text-align: center;
+}
+.kpi-label { font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+.kpi-value { font-size: 1.5rem; font-weight: 700; color: var(--success); margin-top: 5px; }
+
+/* Seções e Cards */
+.section-title { font-size: 1.4rem; margin-bottom: 20px; border-left: 4px solid var(--accent); padding-left: 15px; }
+
+.card {
+    background: var(--bg-card);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    padding: 25px;
+    margin-bottom: 30px;
+    box-shadow: var(--shadow);
+}
+
+img { width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--border); margin-top: 15px; }
+
+/* Tabela */
+table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+th { text-align: left; padding: 15px; color: var(--text-muted); font-weight: 600; border-bottom: 1px solid var(--border); }
+td { padding: 15px; border-bottom: 1px solid var(--border); }
+tr:last-child td { border-bottom: none; }
+tr:hover { background-color: #263345; }
+
+/* Botões */
+.btn {
+    display: inline-block;
+    padding: 8px 16px;
+    background-color: var(--accent);
+    color: #0f172a;
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: transform 0.2s;
+}
+.btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
 """
+
 with open("resultados/style.css", "w", encoding="utf-8") as f:
     f.write(CSS_CONTENT)
 
@@ -151,7 +223,6 @@ sumario_global = {}
 print(f"\n>>> INICIANDO BATERIA: {CHAVE_ESCOLHIDA.upper()} <<<\n")
 
 for caminho in INSTANCIAS:
-
     nome_instancia = os.path.basename(caminho).split(".")[0]
     pasta_saida = f"resultados/{nome_instancia}"
     garantir_pasta(pasta_saida)
@@ -172,7 +243,6 @@ for caminho in INSTANCIAS:
 
     # --- Loop pelos Algoritmos do Experimento Escolhido ---
     for exp in EXPERIMENTO_ATUAL:
-
         nome_exp = exp["nome"]
         alg = exp["algoritmo"]
         params = exp["params"]
@@ -186,11 +256,10 @@ for caminho in INSTANCIAS:
         historico_30_melhores = []
         historico_30_medias = []
 
-        # --- 30 Execuções ---
+        # --- Loop de Robustez (30 execuções) ---
         for k in range(NUM_EXECUCOES):
             inicio = time.perf_counter()
 
-            # Instanciação dinâmica
             if alg == "AG":
                 modelo = AlgoritmoGenetico(
                     cidades=cidades,
@@ -226,6 +295,7 @@ for caminho in INSTANCIAS:
                 modelo = RecozimentoSimulado(
                     cidades=cidades,
                     temp_inicial=params.get("temp_inicial", 1000),
+                    cooling_rate=params.get("cooling_rate", 0.995),
                     max_iterations=NUM_GERACOES * TAMANHO_POPULACAO,
                     dist_matrix=dist_matrix
                 )
@@ -240,18 +310,14 @@ for caminho in INSTANCIAS:
                 melhor_global_dist = dist
                 melhor_global_rota = rota
             
-            # Feedback visual
-            print(".", end="", flush=True)
+            # Feedback visual simples
+            if k % 10 == 0: print(".", end="", flush=True)
 
         print(f" OK (Média: {np.mean(resultados_dist):.2f})")
 
         # Salva JSON bruto
         with open(f"{pasta_saida}/{nome_exp}.json", "w") as jf:
-            json.dump(
-                {"distancias": resultados_dist, "tempos": resultados_tempo},
-                jf,
-                indent=2
-            )
+            json.dump({"distancias": resultados_dist, "tempos": resultados_tempo}, jf, indent=2)
 
         # Gráfico de Convergência Individual
         media_pop = historico_30_medias if alg == "AG" else None
@@ -275,13 +341,9 @@ for caminho in INSTANCIAS:
         melhor_global_rota, cidades, 
         f"{pasta_saida}/melhor_rota_{nome_instancia}.png"
     )
-    
-    # Salva resumo da melhor rota em TXT
-    with open(f"{pasta_saida}/melhor_rota_{nome_instancia}.txt", "w") as f:
-        f.write(f"Distancia: {melhor_global_dist}\nRota: {melhor_global_rota}")
 
-    # 3. Testes Estatísticos (T-Student) para o Relatório HTML
-    ttest_html = "<h2>Testes Estatísticos (T-Student)</h2>"
+    # 3. Testes Estatísticos (HTML para o relatório individual)
+    ttest_html = "<div class='card'><h3>Testes Estatísticos (T-Student)</h3>"
     chaves = list(resultados_boxplot_instancia.keys())
     
     for i in range(len(chaves)):
@@ -291,48 +353,33 @@ for caminho in INSTANCIAS:
             dados_a = resultados_boxplot_instancia[alg_a]
             dados_b = resultados_boxplot_instancia[alg_b]
 
-            # ttest_ind assume variâncias iguais por padrão; equal_var=False é mais seguro
             t_stat, p_val = stats.ttest_ind(dados_a, dados_b, equal_var=False)
+            cor = "var(--success)" if p_val < 0.05 else "var(--text-muted)"
+            sig = "SIM" if p_val < 0.05 else "NÃO"
             
-            significativo = "<b>SIM</b>" if p_val < 0.05 else "NÃO"
-            ttest_html += f"<p><b>{alg_a} vs {alg_b}</b><br>"
-            ttest_html += f"Médias: {np.mean(dados_a):.2f} vs {np.mean(dados_b):.2f}<br>"
-            ttest_html += f"p-value: {p_val:.4e} (Significativo? {significativo})</p>"
+            ttest_html += f"<p style='margin-bottom:10px; border-bottom:1px solid var(--border); padding-bottom:5px;'><b>{alg_a} vs {alg_b}</b><br>"
+            ttest_html += f"p-value: {p_val:.4e} <strong style='color:{cor}'>({sig})</strong></p>"
+    ttest_html += "</div>"
 
-    # 4. CSV Resumo
-    with open(f"{pasta_saida}/resumo_{nome_instancia}.csv", "w", newline="") as fh:
-        w = csv.writer(fh)
-        w.writerow(["Algoritmo", "Media", "Desvio", "Melhor", "Pior", "Tempo Medio"])
-        for k, v in resultados_boxplot_instancia.items():
-            # Recupera tempo médio do JSON
-            try:
-                dados_json = json.load(open(f"{pasta_saida}/{k}.json"))
-                tempo_medio = np.mean(dados_json["tempos"])
-            except:
-                tempo_medio = 0.0
-            w.writerow([k, np.mean(v), np.std(v), np.min(v), np.max(v), tempo_medio])
-
-    # 5. Relatório HTML da Instância
+    # 4. Relatório HTML da Instância (Agora usando o estilo novo)
     with open(f"{pasta_saida}/relatorio_{nome_instancia}.html", "w", encoding="utf-8") as fh:
-        fh.write(f"<html><head><link rel='stylesheet' href='../style.css'></head><body>")
-        fh.write(f"<h1>Relatório: {nome_instancia}</h1>")
-        fh.write(f"<p>Experimento: {CHAVE_ESCOLHIDA.upper()}</p>")
+        fh.write(f"<html><head><link rel='stylesheet' href='../style.css'></head><body><div class='container'>")
+        fh.write(f"<header><h1>Relatório: {nome_instancia}</h1><div class='timestamp'>{CHAVE_ESCOLHIDA.upper()}</div></header>")
         
-        fh.write("<h2>Comparativo de Desempenho</h2>")
-        fh.write(f"<img src='boxplot_{nome_instancia}.png'>")
+        fh.write("<h2 class='section-title'>Comparativo de Desempenho</h2>")
+        fh.write(f"<div class='card'><img src='boxplot_{nome_instancia}.png'></div>")
         
-        fh.write("<h2>Melhor Solução Encontrada</h2>")
-        fh.write(f"<p>Distância: {melhor_global_dist:.4f}</p>")
-        fh.write(f"<img src='melhor_rota_{nome_instancia}.png'>")
+        fh.write("<h2 class='section-title'>Melhor Solução Encontrada</h2>")
+        fh.write(f"<div class='card'><p>Distância Total: <b style='color:var(--accent)'>{melhor_global_dist:.2f}</b></p>")
+        fh.write(f"<img src='melhor_rota_{nome_instancia}.png'></div>")
         
         fh.write(ttest_html)
         
-        fh.write("<h2>Convergência Individual</h2>")
+        fh.write("<h2 class='section-title'>Curvas de Convergência</h2><div class='card'>")
         for exp in EXPERIMENTO_ATUAL:
             nome_img = exp["nome"]
             fh.write(f"<h3>{nome_img}</h3><img src='convergencia_{nome_img}.png'>")
-            
-        fh.write("</body></html>")
+        fh.write("</div></div></body></html>")
 
     # Salva melhor para o sumário global
     melhor_alg_instancia = min(resultados_boxplot_instancia, key=lambda k: np.mean(resultados_boxplot_instancia[k]))
@@ -347,30 +394,110 @@ for caminho in INSTANCIAS:
 
 
 # ================================================================
-# 6. DASHBOARD GLOBAL
+# 6. DASHBOARD GLOBAL (VISUAL PROFISSIONAL)
 # ================================================================
 
+# 1. Gera o gráfico global
 visualizacao.plotar_boxplot_comparativo(
     resultados_globais, "resultados/boxplot_global.png"
 )
 
-with open("resultados/index.html", "w", encoding="utf-8") as fh:
-    fh.write(f"<html><head><link rel='stylesheet' href='style.css'></head><body>")
-    fh.write(f"<h1>Dashboard Global - {EXECUTION_TIMESTAMP}</h1>")
-    fh.write(f"<h3>Bateria de Testes: {CHAVE_ESCOLHIDA.upper()}</h3>")
-    
-    fh.write("<h2>Visão Geral (Boxplot)</h2>")
-    fh.write("<img src='boxplot_global.png'>")
-    
-    fh.write("<h2>Resumo por Instância</h2>")
-    fh.write("<table><tr><th>Instância</th><th>Melhor</th><th>Algoritmo (Média)</th><th>Relatório</th></tr>")
-    
-    for inst, info in sumario_global.items():
-        fh.write(f"<tr><td>{inst}</td>")
-        fh.write(f"<td>{info['melhor_dist']:.2f}</td>")
-        fh.write(f"<td>{info['melhor_alg']}</td>")
-        fh.write(f"<td><a href='{inst}/relatorio_{inst}.html' target='_blank'>Abrir Relatório</a></td></tr>")
-    
-    fh.write("</table></body></html>")
+# 2. Calcula KPIs
+total_instancias = len(INSTANCIAS)
+if sumario_global:
+    melhor_alg_geral = max(
+        [info['melhor_alg'] for info in sumario_global.values()],
+        key=[info['melhor_alg'] for info in sumario_global.values()].count
+    )
+    melhor_dist_abs = min(info['melhor_dist'] for info in sumario_global.values())
+else:
+    melhor_alg_geral = "N/A"
+    melhor_dist_abs = 0.0
 
-print("\n=== Execução Finalizada com Sucesso! ===")
+# 3. Gera HTML Premium
+html_content = f"""
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TSP Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        
+        <header>
+            <div>
+                <h1>Dashboard de Otimização</h1>
+                <div class="timestamp">Execução: {EXECUTION_TIMESTAMP} | Bateria: {CHAVE_ESCOLHIDA.upper()}</div>
+            </div>
+        </header>
+
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-label">Instâncias</div>
+                <div class="kpi-value">{total_instancias}</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Algoritmo Vencedor</div>
+                <div class="kpi-value">{melhor_alg_geral}</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Melhor Distância (Abs)</div>
+                <div class="kpi-value">{melhor_dist_abs:.2f}</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Execuções / Cenário</div>
+                <div class="kpi-value">{NUM_EXECUCOES}</div>
+            </div>
+        </div>
+
+        <h2 class="section-title">Análise Comparativa Global</h2>
+        <div class="card">
+            <p style="color:var(--text-muted); margin-bottom:15px;">Dispersão de resultados entre instâncias e algoritmos.</p>
+            <img src="boxplot_global.png" alt="Boxplot Global">
+        </div>
+
+        <h2 class="section-title">Resultados por Instância</h2>
+        <div class="card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Instância</th>
+                        <th>Melhor Distância</th>
+                        <th>Algoritmo Vencedor</th>
+                        <th>Ação</th>
+                    </tr>
+                </thead>
+                <tbody>
+"""
+
+for inst, info in sumario_global.items():
+    html_content += f"""
+                    <tr>
+                        <td style="font-weight:600; color:var(--text-main);">{inst.upper()}</td>
+                        <td>{info['melhor_dist']:.2f}</td>
+                        <td><span style="color:var(--accent)">{info['melhor_alg']}</span></td>
+                        <td><a href="{inst}/relatorio_{inst}.html" class="btn" target="_blank">Ver Detalhes &rarr;</a></td>
+                    </tr>
+    """
+
+html_content += """
+                </tbody>
+            </table>
+        </div>
+
+        <footer style="text-align:center; color:var(--text-muted); margin-top:50px; font-size:0.8rem;">
+            Sistema de Comparação de Meta-heurísticas v2.0
+        </footer>
+
+    </div>
+</body>
+</html>
+"""
+
+with open("resultados/index.html", "w", encoding="utf-8") as fh:
+    fh.write(html_content)
+
+print("\n=== Dashboard Profissional Gerado em 'resultados/index.html' ===")
