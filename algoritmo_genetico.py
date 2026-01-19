@@ -54,16 +54,16 @@ class Individuo:
         self.epsilon = epsilon
 
         # Calcula a distância total (usa matriz se fornecida)
-        # PARA APRESENTAÇÃO: "Aqui transformamos a rota em seu custo (distância total)."
+        # Aqui transformamos a rota em seu custo (distância total)."
         self.distancia: float = utils.calcular_distancia_total(self.rota, self.cidades, self.dist_matrix)
 
         # Fitness: transformamos minimização (distância) em maximização (fitness).
-        # PARA APRESENTAÇÃO: "Fitness = 1 / (distância + epsilon) para evitar divisão por zero."
+        #     Fitness = 1 / (distância + epsilon) para evitar divisão por zero."
         self.fitness: float = 1.0 / (self.distancia + self.epsilon)
 
     def copy(self) -> "Individuo":
         """Retorna um clone independente deste indivíduo."""
-        # PARA APRESENTAÇÃO: "Usamos cópias para garantir que o elitismo não compartilhe referências."
+        #      Usamos cópias para garantir que o elitismo não compartilhe referências."
         return Individuo(self.rota[:], self.cidades, self.dist_matrix, self.epsilon)
 
     def __repr__(self):
@@ -144,7 +144,7 @@ class AlgoritmoGenetico:
         self.epsilon = epsilon
 
         # Se a matriz de distâncias não for passada, pré-computamos (ganho de performance)
-        # PARA APRESENTAÇÃO: "Pré-calculamos a matriz para acelerar as avaliações."
+        #       Pré-calculamos a matriz para acelerar as avaliações."
         if dist_matrix is None:
             self.dist_matrix = utils.calcular_matriz_distancias(self.cidades)
         else:
@@ -272,7 +272,7 @@ class AlgoritmoGenetico:
                 if val is None and faltantes:
                     filho[i] = faltantes.pop(0)
 
-        # PARA APRESENTAÇÃO: "OX preserva a ordem relativa dos genes, importante em permutações."
+        #        OX preserva a ordem relativa dos genes, importante em permutações."
         return filho
 
     def _crossover_pmx(self, pai1: Individuo, pai2: Individuo) -> List[int]:
@@ -308,7 +308,7 @@ class AlgoritmoGenetico:
                     filho[i] = faltantes[idx]
                     idx += 1
 
-        # PARA APRESENTAÇÃO: "PMX é mais complexo que OX, mas preserva mapeamentos parciais entre pais."
+        # PMX é mais complexo que OX, mas preserva mapeamentos parciais entre pais."
         return filho
 
     def _aplicar_crossover(self, pai1: Individuo, pai2: Individuo) -> List[int]:
@@ -395,7 +395,7 @@ class AlgoritmoGenetico:
         self.historico_medias = [sum(ind.distancia for ind in self.populacao) / len(self.populacao)]
 
         # loop principal de gerações
-        # PARA APRESENTAÇÃO: "Aqui será executada a evolução geracional por num_geracoes steps."
+        #    "Aqui será executada a evolução geracional por num_geracoes steps."
         for ger in range(1, self.num_geracoes + 1):
 
             # Elitismo: preserva melhores indivíduos para a próxima geração
@@ -435,9 +435,9 @@ class AlgoritmoGenetico:
             # Atualiza o melhor global se encontramos solução melhor nesta geração
             if melhor_da_geracao.distancia < melhor_global.distancia:
                 melhor_global = melhor_da_geracao.copy()
-                # PARA APRESENTAÇÃO: "Atualizamos o melhor global quando encontramos uma rota menor."
+                # "Atualizamos o melhor global quando encontramos uma rota menor.
 
         # Final do AG: imprimimos e retornamos o melhor encontrado
         print(f"[AG] Concluído. Melhor Distância: {melhor_global.distancia:.4f}")
-        # PARA APRESENTAÇÃO: "O método executar() devolve o melhor indivíduo; os históricos ficarão disponíveis para plotagem."
+        # O método executar() devolve o melhor indivíduo; os históricos ficarão disponíveis para plotagem.
         return melhor_global

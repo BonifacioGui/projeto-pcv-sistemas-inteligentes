@@ -38,8 +38,6 @@ class ACO:
     ):
         """
         Inicializa os parâmetros do ACO.
-
-        PARTE DIDÁTICA (para a apresentação):
         -------------------------------------
         - alfa controla a influência do feromônio
         - beta controla a influência da heurística (1/distância)

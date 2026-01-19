@@ -1,8 +1,7 @@
 """
-main.py - Versão Final para Entrega (Com Dashboard Profissional)
-Contém todos os cenários de teste exigidos no projeto e gera relatório executivo.
+main.py - Versão Final para Entrega
+Orquestrador de Experimentos com Geração de Dashboard Profissional e Relatórios Detalhados.
 """
-
 import os
 import time
 import json
@@ -19,14 +18,13 @@ from algoritmo_genetico import AlgoritmoGenetico
 from colonia_formigas import ACO
 from recozimento_simulado import RecozimentoSimulado
 
-
 # ================================================================
 # 1. CONFIGURAÇÕES GERAIS
 # ================================================================
 
-NUM_EXECUCOES     = 2     # Robustez estatística (Padrão: 30)
-NUM_GERACOES      = 10    # Iterações por execução (500)
-TAMANHO_POPULACAO = 10    # Tamanho da população/formigueiro (50)
+NUM_EXECUCOES     = 30      # Estatística robusta exige 30
+NUM_GERACOES      = 500     # Para dar tempo de convergir(500)
+TAMANHO_POPULACAO = 50      # Tamanho padrão da literatura (50)
 
 INSTANCIAS = [
     "data/st70.tsp",
@@ -36,186 +34,47 @@ INSTANCIAS = [
 
 EXECUTION_TIMESTAMP = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
-
 # ================================================================
-# 2. BANCO DE EXPERIMENTOS (TODOS OS CENÁRIOS DA TABELA)
+# 2. BANCO DE EXPERIMENTOS
 # ================================================================
-
 TODOS_EXPERIMENTOS = {
-    # --- ANÁLISE 9: COMPARAÇÃO GERAL (AG vs ACO vs SA) ---
-    # Use esta opção para gerar o comparativo final nas 3 bases.
     "geral": [
-        {"nome": "AG_Padrao", "algoritmo": "AG",
-         "params": {"taxa_mutacao": 0.01, "metodo_crossover": "ox", "metodo_mutacao": "swap"}},
-        
-        {"nome": "AG_AltaMutacao", "algoritmo": "AG",
-         "params": {"taxa_mutacao": 0.10, "metodo_crossover": "ox", "metodo_mutacao": "swap"}},
-        
-        {"nome": "ACO_Padrao", "algoritmo": "ACO",
-         "params": {"num_formigas": TAMANHO_POPULACAO, "alfa": 1.0, "beta": 2.5, "rho": 0.1}},
-        
-        {"nome": "SA_Padrao", "algoritmo": "SA",
-         "params": {"temp_inicial": 1000, "cooling_rate": 0.995}}
+        {"nome": "AG_Padrao", "algoritmo": "AG", "params": {"taxa_mutacao": 0.01, "metodo_crossover": "ox"}},
+        {"nome": "AG_AltaMutacao", "algoritmo": "AG", "params": {"taxa_mutacao": 0.10, "metodo_crossover": "ox"}},
+        {"nome": "ACO_Padrao", "algoritmo": "ACO", "params": {"num_formigas": TAMANHO_POPULACAO, "alfa": 1.0, "beta": 2.5, "rho": 0.1}},
+        {"nome": "SA_Padrao", "algoritmo": "SA", "params": {"temp_inicial": 1000, "cooling_rate": 0.995}}
     ],
-
-    # --- ANÁLISE 2: SELEÇÃO (Roleta vs Torneio) ---
     "selecao": [
-        {"nome": "AG_Torneio", "algoritmo": "AG",
-         "params": {"metodo_selecao": "torneio", "taxa_mutacao": 0.01, "metodo_crossover": "ox", "metodo_mutacao": "inversion"}},
-
-        {"nome": "AG_Roleta", "algoritmo": "AG",
-         "params": {"metodo_selecao": "roleta", "taxa_mutacao": 0.01, "metodo_crossover": "ox", "metodo_mutacao": "inversion"}},
+        {"nome": "AG_Torneio", "algoritmo": "AG", "params": {"metodo_selecao": "torneio"}},
+        {"nome": "AG_Roleta", "algoritmo": "AG", "params": {"metodo_selecao": "roleta"}},
     ],
-    
-    # --- ANÁLISE 3: MUTAÇÃO (Troca vs Inversão) ---
     "mutacao": [
-        {"nome": "AG_MutacaoTroca", "algoritmo": "AG",
-         "params": {"metodo_mutacao": "swap", "metodo_selecao": "torneio", "metodo_crossover": "ox", "taxa_mutacao": 0.01}},
-
-        {"nome": "AG_MutacaoInversao", "algoritmo": "AG",
-         "params": {"metodo_mutacao": "inversion", "metodo_selecao": "torneio", "metodo_crossover": "ox", "taxa_mutacao": 0.01}}
+        {"nome": "AG_Troca", "algoritmo": "AG", "params": {"metodo_mutacao": "swap"}},
+        {"nome": "AG_Inversao", "algoritmo": "AG", "params": {"metodo_mutacao": "inversion"}},
     ],
-
-    # --- ANÁLISE 4: ELITISMO (0% vs 5% vs 10%) ---
     "elitismo": [
-        {"nome": "AG_Elitismo_0", "algoritmo": "AG",
-         "params": {"taxa_elitismo": 0.00, "metodo_selecao": "torneio", "metodo_crossover": "ox", "metodo_mutacao": "inversion"}},
-
-        {"nome": "AG_Elitismo_5", "algoritmo": "AG",
-         "params": {"taxa_elitismo": 0.05, "metodo_selecao": "torneio", "metodo_crossover": "ox", "metodo_mutacao": "inversion"}},
-
-        {"nome": "AG_Elitismo_10", "algoritmo": "AG",
-         "params": {"taxa_elitismo": 0.10, "metodo_selecao": "torneio", "metodo_crossover": "ox", "metodo_mutacao": "inversion"}}
+        {"nome": "AG_Elitismo_0", "algoritmo": "AG", "params": {"taxa_elitismo": 0.0}},
+        {"nome": "AG_Elitismo_10", "algoritmo": "AG", "params": {"taxa_elitismo": 0.1}},
     ],
-
-    # --- ANÁLISE EXTRA: CROSSOVER (OX vs PMX) ---
     "crossover": [
-        {"nome": "AG_Crossover_OX", "algoritmo": "AG",
-         "params": {"metodo_crossover": "ox", "metodo_selecao": "torneio", "metodo_mutacao": "inversion"}},
-
-        {"nome": "AG_Crossover_PMX", "algoritmo": "AG",
-         "params": {"metodo_crossover": "pmx", "metodo_selecao": "torneio", "metodo_mutacao": "inversion"}}
+        {"nome": "AG_OX", "algoritmo": "AG", "params": {"metodo_crossover": "ox"}},
+        {"nome": "AG_PMX", "algoritmo": "AG", "params": {"metodo_crossover": "pmx"}},
     ]
 }
 
-
-# ============================================================
-# 3. SELETOR: QUAL EXPERIMENTO RODAR AGORA?
-# ============================================================
-# Opções: "geral", "selecao", "mutacao", "elitismo", "crossover"
+# SELETOR
 CHAVE_ESCOLHIDA = "geral"
-
-EXPERIMENTO_ATUAL = TODOS_EXPERIMENTOS[CHAVE_ESCOLHIDA]
-
+EXPERIMENTO_ATUAL = TODOS_EXPERIMENTOS.get(CHAVE_ESCOLHIDA, TODOS_EXPERIMENTOS["geral"])
 
 # ================================================================
-# 4. PREPARAÇÃO DE ESTILO (CSS PROFISSIONAL)
+# 3. PREPARAÇÃO
 # ================================================================
 def garantir_pasta(p):
-    if not os.path.exists(p):
-        os.makedirs(p)
-
+    if not os.path.exists(p): os.makedirs(p)
 garantir_pasta("resultados")
 
-# CSS Moderno (Dark Mode / Scientific Style)
-CSS_CONTENT = """
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap');
-
-:root {
-    --bg-body: #0f172a;
-    --bg-card: #1e293b;
-    --text-main: #f8fafc;
-    --text-muted: #94a3b8;
-    --accent: #38bdf8;
-    --success: #4ade80;
-    --border: #334155;
-    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-}
-
-* { box-sizing: border-box; margin: 0; padding: 0; }
-
-body {
-    background-color: var(--bg-body);
-    color: var(--text-main);
-    font-family: 'Inter', sans-serif;
-    padding: 40px;
-    line-height: 1.6;
-}
-
-.container { max-width: 1200px; margin: 0 auto; }
-
-/* Header */
-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 40px;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 20px;
-}
-header h1 { font-size: 1.8rem; font-weight: 600; color: var(--accent); }
-.timestamp { color: var(--text-muted); font-size: 0.9rem; }
-
-/* KPIs */
-.kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
-    margin-bottom: 40px;
-}
-.kpi-card {
-    background: var(--bg-card);
-    padding: 20px;
-    border-radius: 12px;
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow);
-    text-align: center;
-}
-.kpi-label { font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
-.kpi-value { font-size: 1.5rem; font-weight: 700; color: var(--success); margin-top: 5px; }
-
-/* Seções e Cards */
-.section-title { font-size: 1.4rem; margin-bottom: 20px; border-left: 4px solid var(--accent); padding-left: 15px; }
-
-.card {
-    background: var(--bg-card);
-    border-radius: 16px;
-    border: 1px solid var(--border);
-    padding: 25px;
-    margin-bottom: 30px;
-    box-shadow: var(--shadow);
-}
-
-img { width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--border); margin-top: 15px; }
-
-/* Tabela */
-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-th { text-align: left; padding: 15px; color: var(--text-muted); font-weight: 600; border-bottom: 1px solid var(--border); }
-td { padding: 15px; border-bottom: 1px solid var(--border); }
-tr:last-child td { border-bottom: none; }
-tr:hover { background-color: #263345; }
-
-/* Botões */
-.btn {
-    display: inline-block;
-    padding: 8px 16px;
-    background-color: var(--accent);
-    color: #0f172a;
-    text-decoration: none;
-    border-radius: 6px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    transition: transform 0.2s;
-}
-.btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
-"""
-
-with open("resultados/style.css", "w", encoding="utf-8") as f:
-    f.write(CSS_CONTENT)
-
-
 # ================================================================
-# 5. EXECUÇÃO PRINCIPAL
+# 4. EXECUÇÃO PRINCIPAL
 # ================================================================
 resultados_globais = {}
 sumario_global = {}
@@ -228,7 +87,6 @@ for caminho in INSTANCIAS:
     garantir_pasta(pasta_saida)
 
     print(f"\n=== Rodando Instância: {nome_instancia} ===")
-
     try:
         cidades = parser_tsplib.carregar_cidades(caminho)
         dist_matrix = utils.calcular_matriz_distancias(cidades)
@@ -236,268 +94,209 @@ for caminho in INSTANCIAS:
         print(f"Erro ao carregar {caminho}: {e}")
         continue
 
-    # Dados para o relatório desta instância
     resultados_boxplot_instancia = {}
     melhor_global_dist = float("inf")
-    melhor_global_rota = None
+    melhor_global_alg = "N/A"
+    melhor_global_rota_obj = None 
+    ttest_html_fragments = "" 
 
-    # --- Loop pelos Algoritmos do Experimento Escolhido ---
     for exp in EXPERIMENTO_ATUAL:
         nome_exp = exp["nome"]
         alg = exp["algoritmo"]
         params = exp["params"]
-
-        print(f" -> Executando {nome_exp} ({alg}) ... ", end="")
-
-        resultados_dist = []
-        resultados_tempo = []
         
-        # Históricos para gráficos de convergência
-        historico_30_melhores = []
-        historico_30_medias = []
+        print(f" -> Executando {nome_exp} ({alg}) ... ", end="")
+        
+        dists = []
+        tempos = []
+        hist_melhores = []
+        hist_medias = []
 
-        # --- Loop de Robustez (30 execuções) ---
-        for k in range(NUM_EXECUCOES):
+        for _ in range(NUM_EXECUCOES):
             inicio = time.perf_counter()
-
-            if alg == "AG":
-                modelo = AlgoritmoGenetico(
-                    cidades=cidades,
-                    tamanho_populacao=TAMANHO_POPULACAO,
-                    num_geracoes=NUM_GERACOES,
-                    taxa_mutacao=params.get("taxa_mutacao", 0.01),
-                    taxa_elitismo=params.get("taxa_elitismo", 0.05),
-                    metodo_selecao=params.get("metodo_selecao", "torneio"),
-                    metodo_crossover=params.get("metodo_crossover", "ox"),
-                    metodo_mutacao=params.get("metodo_mutacao", "swap"),
-                    dist_matrix=dist_matrix
-                )
-                melhor = modelo.executar()
-                dist = melhor.distancia
-                rota = melhor.rota
-                
-                historico_30_melhores.append(getattr(modelo, 'historico_melhores', []))
-                historico_30_medias.append(getattr(modelo, 'historico_medias', []))
-
-            elif alg == "ACO":
-                modelo = ACO(
-                    cidades=cidades,
-                    num_formigas=params.get("num_formigas", TAMANHO_POPULACAO), 
-                    num_iteracoes=NUM_GERACOES,
-                    alfa=params.get("alfa", 1.0),
-                    beta=params.get("beta", 2.5),
-                    rho=params.get("rho", 0.1)
-                )
-                rota, dist = modelo.executar()
-                historico_30_melhores.append(getattr(modelo, 'historico_melhores', []))
-
-            elif alg == "SA":
-                modelo = RecozimentoSimulado(
-                    cidades=cidades,
-                    temp_inicial=params.get("temp_inicial", 1000),
-                    cooling_rate=params.get("cooling_rate", 0.995),
-                    max_iterations=NUM_GERACOES * TAMANHO_POPULACAO,
-                    dist_matrix=dist_matrix
-                )
-                rota, dist = modelo.executar()
-                historico_30_melhores.append(getattr(modelo, 'historico_melhores', []))
-
-            tempo = time.perf_counter() - inicio
-            resultados_dist.append(dist)
-            resultados_tempo.append(tempo)
-
-            if dist < melhor_global_dist:
-                melhor_global_dist = dist
-                melhor_global_rota = rota
             
-            # Feedback visual simples
-            if k % 10 == 0: print(".", end="", flush=True)
+            if alg == "AG":
+                modelo = AlgoritmoGenetico(cidades, dist_matrix=dist_matrix, **params, num_geracoes=NUM_GERACOES, tamanho_populacao=TAMANHO_POPULACAO)
+                res = modelo.executar()
+                dist_atual = res.distancia
+                rota_atual = res.rota
+                hist_melhores.append(modelo.historico_melhores)
+                hist_medias.append(modelo.historico_medias)
+            elif alg == "ACO":
+                # CORREÇÃO: Removemos num_formigas explicito pois já vem em **params
+                modelo = ACO(cidades, **params, num_iteracoes=NUM_GERACOES)
+                rota_atual, dist_atual = modelo.executar()
+                hist_melhores.append(modelo.historico_melhores)
+            elif alg == "SA":
+                modelo = RecozimentoSimulado(cidades, dist_matrix=dist_matrix, **params, max_iterations=NUM_GERACOES*TAMANHO_POPULACAO)
+                rota_atual, dist_atual = modelo.executar()
+                hist_melhores.append(modelo.historico_melhores)
 
-        print(f" OK (Média: {np.mean(resultados_dist):.2f})")
+            fim = time.perf_counter()
+            dists.append(dist_atual)
+            tempos.append(fim - inicio)
 
-        # Salva JSON bruto
+            # Verifica se essa execução específica foi a melhor de todas da instância
+            if dist_atual < melhor_global_dist:
+                melhor_global_dist = dist_atual
+                melhor_global_alg = nome_exp
+                melhor_global_rota_obj = rota_atual
+
+        print(f"OK (Média: {np.mean(dists):.2f})")
+        
+        # Salva dados JSON
         with open(f"{pasta_saida}/{nome_exp}.json", "w") as jf:
-            json.dump({"distancias": resultados_dist, "tempos": resultados_tempo}, jf, indent=2)
+            json.dump({"distancias": dists, "tempos": tempos}, jf, indent=2)
 
-        # Gráfico de Convergência Individual
-        media_pop = historico_30_medias if alg == "AG" else None
+        resultados_boxplot_instancia[nome_exp] = dists
+        media_pop = hist_medias if alg == "AG" else None
+        
+        # Gera Gráfico de Convergência
         visualizacao.plotar_convergencia(
-            historico_30_melhores, media_pop,
+            hist_melhores, 
+            media_pop, 
             f"{pasta_saida}/convergencia_{nome_exp}.png"
         )
-        
-        resultados_boxplot_instancia[nome_exp] = resultados_dist
 
-    # --- Fim do Loop de Algoritmos para esta Instância ---
+    # --- FIM DO LOOP DE ALGORITMOS PARA ESTA INSTÂNCIA ---
 
-    # 1. Gerar Boxplot da Instância
+    # 1. Gera Boxplot da Instância
     visualizacao.plotar_boxplot_comparativo(
         resultados_boxplot_instancia, 
         f"{pasta_saida}/boxplot_{nome_instancia}.png"
     )
-
-    # 2. Gerar Melhor Rota
-    visualizacao.plotar_rota(
-        melhor_global_rota, cidades, 
-        f"{pasta_saida}/melhor_rota_{nome_instancia}.png"
-    )
-
-    # 3. Testes Estatísticos (HTML para o relatório individual)
-    ttest_html = "<div class='card'><h3>Testes Estatísticos (T-Student)</h3>"
-    chaves = list(resultados_boxplot_instancia.keys())
     
+    # 2. Gera Gráfico da Melhor Rota
+    if melhor_global_rota_obj:
+        visualizacao.plotar_rota(
+            melhor_global_rota_obj, 
+            cidades, 
+            f"{pasta_saida}/melhor_rota_{nome_instancia}.png"
+        )
+
+    # 3. Gera CSV de Resumo
+    with open(f"{pasta_saida}/resumo_{nome_instancia}.csv", "w", newline="") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(["Algoritmo", "Media", "Desvio", "Min", "Max"])
+        for alg_nome, dados in resultados_boxplot_instancia.items():
+            writer.writerow([alg_nome, np.mean(dados), np.std(dados), np.min(dados), np.max(dados)])
+
+    # 4. Calcula Testes T-Student
+    chaves = list(resultados_boxplot_instancia.keys())
     for i in range(len(chaves)):
         for j in range(i + 1, len(chaves)):
             alg_a = chaves[i]
             alg_b = chaves[j]
-            dados_a = resultados_boxplot_instancia[alg_a]
-            dados_b = resultados_boxplot_instancia[alg_b]
+            try:
+                s, p = stats.ttest_ind(resultados_boxplot_instancia[alg_a], resultados_boxplot_instancia[alg_b], equal_var=False)
+                cor = "var(--success)" if p < 0.05 else "var(--text-muted)"
+                sig = "SIM" if p < 0.05 else "NÃO"
+                ttest_html_fragments += f"<p><b>{alg_a} vs {alg_b}</b>: p-value={p:.4e} <span style='color:{cor}; font-weight:bold'>({sig})</span></p>"
+            except:
+                ttest_html_fragments += f"<p><b>{alg_a} vs {alg_b}</b>: Dados idênticos (sem variância).</p>"
 
-            t_stat, p_val = stats.ttest_ind(dados_a, dados_b, equal_var=False)
-            cor = "var(--success)" if p_val < 0.05 else "var(--text-muted)"
-            sig = "SIM" if p_val < 0.05 else "NÃO"
+    # 5. Gera Relatório HTML Individual
+    # 5. Gera Relatório HTML Individual (CORRIGIDO: Gráficos Maiores + Zoom)
+    with open(f"{pasta_saida}/relatorio_{nome_instancia}.html", "w", encoding="utf-8") as f:
+        f.write(f"""
+        <html><head><link rel='stylesheet' href='../style.css'></head><body>
+        <div class='container'>
+            <header><h1>Detalhes: {nome_instancia.upper()}</h1><div class='timestamp'>Bateria: {CHAVE_ESCOLHIDA}</div></header>
             
-            ttest_html += f"<p style='margin-bottom:10px; border-bottom:1px solid var(--border); padding-bottom:5px;'><b>{alg_a} vs {alg_b}</b><br>"
-            ttest_html += f"p-value: {p_val:.4e} <strong style='color:{cor}'>({sig})</strong></p>"
-    ttest_html += "</div>"
+            <h2 class='section-title'>1. Melhor Resultado</h2>
+            <div class='card'>
+                <p>Melhor Algoritmo: <strong>{melhor_global_alg}</strong></p>
+                <p>Distância: <strong>{melhor_global_dist:.2f}</strong></p>
+                <a href='melhor_rota_{nome_instancia}.png' target='_blank'>
+                    <img src='melhor_rota_{nome_instancia}.png' title='Clique para ampliar'>
+                </a>
+            </div>
 
-    # 4. Relatório HTML da Instância (Agora usando o estilo novo)
-    with open(f"{pasta_saida}/relatorio_{nome_instancia}.html", "w", encoding="utf-8") as fh:
-        fh.write(f"<html><head><link rel='stylesheet' href='../style.css'></head><body><div class='container'>")
-        fh.write(f"<header><h1>Relatório: {nome_instancia}</h1><div class='timestamp'>{CHAVE_ESCOLHIDA.upper()}</div></header>")
+            <h2 class='section-title'>2. Comparativo (Boxplot)</h2>
+            <div class='card'>
+                <a href='boxplot_{nome_instancia}.png' target='_blank'>
+                    <img src='boxplot_{nome_instancia}.png' title='Clique para ampliar'>
+                </a>
+            </div>
+
+            <h2 class='section-title'>3. Testes Estatísticos (Significância)</h2>
+            <div class='card'>{ttest_html_fragments if ttest_html_fragments else "Nenhum teste realizado."}</div>
+
+            <h2 class='section-title'>4. Convergência por Algoritmo</h2>
+            <div style='display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 20px;'>
+        """)
         
-        fh.write("<h2 class='section-title'>Comparativo de Desempenho</h2>")
-        fh.write(f"<div class='card'><img src='boxplot_{nome_instancia}.png'></div>")
-        
-        fh.write("<h2 class='section-title'>Melhor Solução Encontrada</h2>")
-        fh.write(f"<div class='card'><p>Distância Total: <b style='color:var(--accent)'>{melhor_global_dist:.2f}</b></p>")
-        fh.write(f"<img src='melhor_rota_{nome_instancia}.png'></div>")
-        
-        fh.write(ttest_html)
-        
-        fh.write("<h2 class='section-title'>Curvas de Convergência</h2><div class='card'>")
         for exp in EXPERIMENTO_ATUAL:
-            nome_img = exp["nome"]
-            fh.write(f"<h3>{nome_img}</h3><img src='convergencia_{nome_img}.png'>")
-        fh.write("</div></div></body></html>")
+            # Adiciona o Link <a> ao redor da imagem para permitir Zoom
+            f.write(f"""
+            <div class='card'>
+                <h3>{exp['nome']}</h3>
+                <a href='convergencia_{exp['nome']}.png' target='_blank'>
+                    <img src='convergencia_{exp['nome']}.png' style='width:100%; border:1px solid #334155;' title='Clique para ampliar'>
+                </a>
+                <p style='text-align:center; font-size:0.8rem; color:#94a3b8; margin-top:5px;'>(Clique na imagem para ampliar)</p>
+            </div>
+            """)
+        
+        f.write("</div></div></body></html>")
 
-    # Salva melhor para o sumário global
-    melhor_alg_instancia = min(resultados_boxplot_instancia, key=lambda k: np.mean(resultados_boxplot_instancia[k]))
-    sumario_global[nome_instancia] = {
-        "melhor_dist": melhor_global_dist,
-        "melhor_alg": melhor_alg_instancia
-    }
-    
-    # Guarda resultados para o boxplot global
+    # Atualiza Globais para o Dashboard Final
+    sumario_global[nome_instancia] = {"melhor_dist": melhor_global_dist, "melhor_alg": melhor_global_alg}
     for k, v in resultados_boxplot_instancia.items():
         resultados_globais[f"{nome_instancia}_{k}"] = v
 
-
 # ================================================================
-# 6. DASHBOARD GLOBAL (VISUAL PROFISSIONAL)
+# 5. DASHBOARD GLOBAL
 # ================================================================
 
-# 1. Gera o gráfico global
-visualizacao.plotar_boxplot_comparativo(
-    resultados_globais, "resultados/boxplot_global.png"
-)
+# 1. Gera gráfico global
+visualizacao.plotar_boxplot_comparativo(resultados_globais, "resultados/boxplot_global.png")
 
-# 2. Calcula KPIs
-total_instancias = len(INSTANCIAS)
+# 2. Prepara os dados para os KPIs
 if sumario_global:
-    melhor_alg_geral = max(
-        [info['melhor_alg'] for info in sumario_global.values()],
-        key=[info['melhor_alg'] for info in sumario_global.values()].count
-    )
-    melhor_dist_abs = min(info['melhor_dist'] for info in sumario_global.values())
+    lista_vencedores = [i['melhor_alg'] for i in sumario_global.values()]
+    melhor_alg = max(set(lista_vencedores), key=lista_vencedores.count)
+    melhor_dist = min([i['melhor_dist'] for i in sumario_global.values()])
 else:
-    melhor_alg_geral = "N/A"
-    melhor_dist_abs = 0.0
+    melhor_alg, melhor_dist = "N/A", 0.0
 
-# 3. Gera HTML Premium
-html_content = f"""
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TSP Dashboard</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <div class="container">
-        
-        <header>
-            <div>
-                <h1>Dashboard de Otimização</h1>
-                <div class="timestamp">Execução: {EXECUTION_TIMESTAMP} | Bateria: {CHAVE_ESCOLHIDA.upper()}</div>
-            </div>
-        </header>
+kpis = {
+    "melhor_alg": melhor_alg,
+    "melhor_dist": melhor_dist,
+    "total_exec": NUM_EXECUCOES * len(EXPERIMENTO_ATUAL) * len(INSTANCIAS)
+}
 
-        <div class="kpi-grid">
-            <div class="kpi-card">
-                <div class="kpi-label">Instâncias</div>
-                <div class="kpi-value">{total_instancias}</div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-label">Algoritmo Vencedor</div>
-                <div class="kpi-value">{melhor_alg_geral}</div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-label">Melhor Distância (Abs)</div>
-                <div class="kpi-value">{melhor_dist_abs:.2f}</div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-label">Execuções / Cenário</div>
-                <div class="kpi-value">{NUM_EXECUCOES}</div>
-            </div>
-        </div>
-
-        <h2 class="section-title">Análise Comparativa Global</h2>
-        <div class="card">
-            <p style="color:var(--text-muted); margin-bottom:15px;">Dispersão de resultados entre instâncias e algoritmos.</p>
-            <img src="boxplot_global.png" alt="Boxplot Global">
-        </div>
-
-        <h2 class="section-title">Resultados por Instância</h2>
-        <div class="card">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Instância</th>
-                        <th>Melhor Distância</th>
-                        <th>Algoritmo Vencedor</th>
-                        <th>Ação</th>
-                    </tr>
-                </thead>
-                <tbody>
-"""
-
-for inst, info in sumario_global.items():
-    html_content += f"""
-                    <tr>
-                        <td style="font-weight:600; color:var(--text-main);">{inst.upper()}</td>
-                        <td>{info['melhor_dist']:.2f}</td>
-                        <td><span style="color:var(--accent)">{info['melhor_alg']}</span></td>
-                        <td><a href="{inst}/relatorio_{inst}.html" class="btn" target="_blank">Ver Detalhes &rarr;</a></td>
-                    </tr>
+# 3. LÓGICA DINÂMICA DE CONCLUSÃO
+if "SA" in melhor_alg:
+    analise_vencedor = """
+    O <strong>Recozimento Simulado (SA)</strong> demonstrou ser a estratégia mais robusta nesta bateria. 
+    Sua capacidade de escapar de mínimos locais (aceitando pioras temporárias) foi decisiva nas instâncias maiores.
+    """
+elif "ACO" in melhor_alg:
+    analise_vencedor = """
+    A <strong>Colônia de Formigas (ACO)</strong> obteve o melhor desempenho geral. 
+    A abordagem construtiva guiada por feromônios convergiu rapidamente para soluções de alta qualidade.
+    """
+elif "AG" in melhor_alg:
+    analise_vencedor = """
+    O <strong>Algoritmo Genético (AG)</strong> superou as outras abordagens. 
+    Isso valida a eficácia dos operadores de crossover e a manutenção da diversidade genética.
+    """
+else:
+    analise_vencedor = """
+    Os resultados mostram um <strong>equilíbrio competitivo</strong>. 
+    Nenhum algoritmo dominou completamente todas as instâncias.
     """
 
-html_content += """
-                </tbody>
-            </table>
-        </div>
-
-        <footer style="text-align:center; color:var(--text-muted); margin-top:50px; font-size:0.8rem;">
-            Sistema de Comparação de Meta-heurísticas v2.0
-        </footer>
-
-    </div>
-</body>
-</html>
+minha_conclusao = f"""
+<strong>Resultado da Bateria:</strong><br>
+O algoritmo com maior número de vitórias foi o <span style="color:var(--accent); font-weight:bold;">{melhor_alg}</span>, 
+atingindo a melhor distância absoluta de <b>{melhor_dist:.2f}</b>.<br><br>
+{analise_vencedor}<br>
+<small style="color:var(--text-muted);">Relatório gerado automaticamente em {EXECUTION_TIMESTAMP}</small>
 """
 
-with open("resultados/index.html", "w", encoding="utf-8") as fh:
-    fh.write(html_content)
+# 4. Chama a função geradora no visualizacao.py
+visualizacao.gerar_relatorio_final("resultados/index.html", sumario_global, kpis, minha_conclusao)
 
-print("\n=== Dashboard Profissional Gerado em 'resultados/index.html' ===")
+print("\n=== Dashboard Gerado com Sucesso! ===")
