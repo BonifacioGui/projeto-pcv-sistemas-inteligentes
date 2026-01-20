@@ -1,0 +1,59 @@
+
+        <html><head><link rel='stylesheet' href='../style.css'></head><body>
+        <div class='container'>
+            <header><h1>Detalhes: ST70</h1><div class='timestamp'>Bateria: geral</div></header>
+            
+            <h2 class='section-title'>1. Melhor Resultado</h2>
+            <div class='card'>
+                <p>Melhor Algoritmo: <strong>ACO_Padrao</strong></p>
+                <p>Distância: <strong>707.08</strong></p>
+                <a href='melhor_rota_st70.png' target='_blank'>
+                    <img src='melhor_rota_st70.png' title='Clique para ampliar'>
+                </a>
+            </div>
+
+            <h2 class='section-title'>2. Comparativo (Boxplot)</h2>
+            <div class='card'>
+                <a href='boxplot_st70.png' target='_blank'>
+                    <img src='boxplot_st70.png' title='Clique para ampliar'>
+                </a>
+            </div>
+
+            <h2 class='section-title'>3. Testes Estatísticos (Significância)</h2>
+            <div class='card'><p><b>AG_Padrao vs AG_AltaMutacao</b>: p-value=1.8011e-02 <span style='color:var(--success); font-weight:bold'>(SIM)</span></p><p><b>AG_Padrao vs ACO_Padrao</b>: p-value=3.0017e-28 <span style='color:var(--success); font-weight:bold'>(SIM)</span></p><p><b>AG_Padrao vs SA_Padrao</b>: p-value=5.2970e-38 <span style='color:var(--success); font-weight:bold'>(SIM)</span></p><p><b>AG_AltaMutacao vs ACO_Padrao</b>: p-value=1.7667e-25 <span style='color:var(--success); font-weight:bold'>(SIM)</span></p><p><b>AG_AltaMutacao vs SA_Padrao</b>: p-value=4.1679e-38 <span style='color:var(--success); font-weight:bold'>(SIM)</span></p><p><b>ACO_Padrao vs SA_Padrao</b>: p-value=1.7951e-38 <span style='color:var(--success); font-weight:bold'>(SIM)</span></p></div>
+
+            <h2 class='section-title'>4. Convergência por Algoritmo</h2>
+            <div style='display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 20px;'>
+        
+            <div class='card'>
+                <h3>AG_Padrao</h3>
+                <a href='convergencia_AG_Padrao.png' target='_blank'>
+                    <img src='convergencia_AG_Padrao.png' style='width:100%; border:1px solid #334155;' title='Clique para ampliar'>
+                </a>
+                <p style='text-align:center; font-size:0.8rem; color:#94a3b8; margin-top:5px;'>(Clique na imagem para ampliar)</p>
+            </div>
+            
+            <div class='card'>
+                <h3>AG_AltaMutacao</h3>
+                <a href='convergencia_AG_AltaMutacao.png' target='_blank'>
+                    <img src='convergencia_AG_AltaMutacao.png' style='width:100%; border:1px solid #334155;' title='Clique para ampliar'>
+                </a>
+                <p style='text-align:center; font-size:0.8rem; color:#94a3b8; margin-top:5px;'>(Clique na imagem para ampliar)</p>
+            </div>
+            
+            <div class='card'>
+                <h3>ACO_Padrao</h3>
+                <a href='convergencia_ACO_Padrao.png' target='_blank'>
+                    <img src='convergencia_ACO_Padrao.png' style='width:100%; border:1px solid #334155;' title='Clique para ampliar'>
+                </a>
+                <p style='text-align:center; font-size:0.8rem; color:#94a3b8; margin-top:5px;'>(Clique na imagem para ampliar)</p>
+            </div>
+            
+            <div class='card'>
+                <h3>SA_Padrao</h3>
+                <a href='convergencia_SA_Padrao.png' target='_blank'>
+                    <img src='convergencia_SA_Padrao.png' style='width:100%; border:1px solid #334155;' title='Clique para ampliar'>
+                </a>
+                <p style='text-align:center; font-size:0.8rem; color:#94a3b8; margin-top:5px;'>(Clique na imagem para ampliar)</p>
+            </div>
+            </div></div></body></html>
