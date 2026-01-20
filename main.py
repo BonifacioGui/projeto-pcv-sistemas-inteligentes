@@ -1,5 +1,5 @@
 """
-main.py - Versão Final para Entrega
+main.py - Versão Final para Entrega (Com Análise de Tempo/Escalabilidade)
 Orquestrador de Experimentos com Geração de Dashboard Profissional e Relatórios Detalhados.
 """
 import os
@@ -22,9 +22,9 @@ from recozimento_simulado import RecozimentoSimulado
 # 1. CONFIGURAÇÕES GERAIS
 # ================================================================
 
-NUM_EXECUCOES     = 30      # Estatística robusta exige 30
-NUM_GERACOES      = 500     # Para dar tempo de convergir(500)
-TAMANHO_POPULACAO = 50      # Tamanho padrão da literatura (50)
+NUM_EXECUCOES     = 2      # Estatística robusta exige 30
+NUM_GERACOES      = 10     # Para dar tempo de convergir(500)
+TAMANHO_POPULACAO = 10      # Tamanho padrão da literatura (50)
 
 INSTANCIAS = [
     "data/st70.tsp",
@@ -95,6 +95,8 @@ for caminho in INSTANCIAS:
         continue
 
     resultados_boxplot_instancia = {}
+    resultados_tempos_instancia = {}  # <--- [NOVO] Dicionário para guardar tempos
+    
     melhor_global_dist = float("inf")
     melhor_global_alg = "N/A"
     melhor_global_rota_obj = None 
@@ -123,7 +125,6 @@ for caminho in INSTANCIAS:
                 hist_melhores.append(modelo.historico_melhores)
                 hist_medias.append(modelo.historico_medias)
             elif alg == "ACO":
-                # CORREÇÃO: Removemos num_formigas explicito pois já vem em **params
                 modelo = ACO(cidades, **params, num_iteracoes=NUM_GERACOES)
                 rota_atual, dist_atual = modelo.executar()
                 hist_melhores.append(modelo.historico_melhores)
@@ -141,8 +142,12 @@ for caminho in INSTANCIAS:
                 melhor_global_dist = dist_atual
                 melhor_global_alg = nome_exp
                 melhor_global_rota_obj = rota_atual
-
-        print(f"OK (Média: {np.mean(dists):.2f})")
+        
+        # --- CÁLCULO DE TEMPO MÉDIO (PARA ANÁLISE DE ESCALABILIDADE) ---
+        tempo_medio = np.mean(tempos)
+        resultados_tempos_instancia[nome_exp] = tempo_medio
+        
+        print(f"OK (Média Dist: {np.mean(dists):.2f} | Tempo: {tempo_medio:.4f}s)")
         
         # Salva dados JSON
         with open(f"{pasta_saida}/{nome_exp}.json", "w") as jf:
@@ -174,12 +179,22 @@ for caminho in INSTANCIAS:
             f"{pasta_saida}/melhor_rota_{nome_instancia}.png"
         )
 
-    # 3. Gera CSV de Resumo
+    # 3. Gera CSV de Resumo (AGORA COM TEMPO)
     with open(f"{pasta_saida}/resumo_{nome_instancia}.csv", "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(["Algoritmo", "Media", "Desvio", "Min", "Max"])
+        # Cabeçalho atualizado
+        writer.writerow(["Algoritmo", "Media Dist", "Desvio", "Min", "Max", "Tempo Medio (s)"])
+        
         for alg_nome, dados in resultados_boxplot_instancia.items():
-            writer.writerow([alg_nome, np.mean(dados), np.std(dados), np.min(dados), np.max(dados)])
+            t_med = resultados_tempos_instancia[alg_nome] # Recupera o tempo salvo
+            writer.writerow([
+                alg_nome, 
+                f"{np.mean(dados):.2f}", 
+                f"{np.std(dados):.2f}", 
+                f"{np.min(dados):.2f}", 
+                f"{np.max(dados):.2f}",
+                f"{t_med:.4f}" # Escreve o tempo
+            ])
 
     # 4. Calcula Testes T-Student
     chaves = list(resultados_boxplot_instancia.keys())
@@ -194,9 +209,13 @@ for caminho in INSTANCIAS:
                 ttest_html_fragments += f"<p><b>{alg_a} vs {alg_b}</b>: p-value={p:.4e} <span style='color:{cor}; font-weight:bold'>({sig})</span></p>"
             except:
                 ttest_html_fragments += f"<p><b>{alg_a} vs {alg_b}</b>: Dados idênticos (sem variância).</p>"
+    # 4.1 Gera Gráfico de Tempo (Isso já estava certo, mantenha)
+    visualizacao.plotar_comparativo_tempo(
+        resultados_tempos_instancia, 
+        f"{pasta_saida}/tempos_{nome_instancia}.png"
+    )
 
-    # 5. Gera Relatório HTML Individual
-    # 5. Gera Relatório HTML Individual (CORRIGIDO: Gráficos Maiores + Zoom)
+    # 5. Gera Relatório HTML Individual (CORRIGIDO: Agora mostra o gráfico de tempo)
     with open(f"{pasta_saida}/relatorio_{nome_instancia}.html", "w", encoding="utf-8") as f:
         f.write(f"""
         <html><head><link rel='stylesheet' href='../style.css'></head><body>
@@ -212,29 +231,35 @@ for caminho in INSTANCIAS:
                 </a>
             </div>
 
-            <h2 class='section-title'>2. Comparativo (Boxplot)</h2>
+            <h2 class='section-title'>2. Desempenho Computacional (Tempo)</h2>
+            <div class='card'>
+                <p>Comparativo de velocidade média para convergir:</p>
+                <a href='tempos_{nome_instancia}.png' target='_blank'>
+                    <img src='tempos_{nome_instancia}.png' style='max-width: 600px;' title='Clique para ampliar'>
+                </a>
+            </div>
+
+            <h2 class='section-title'>3. Comparativo de Qualidade (Boxplot)</h2>
             <div class='card'>
                 <a href='boxplot_{nome_instancia}.png' target='_blank'>
                     <img src='boxplot_{nome_instancia}.png' title='Clique para ampliar'>
                 </a>
             </div>
 
-            <h2 class='section-title'>3. Testes Estatísticos (Significância)</h2>
+            <h2 class='section-title'>4. Testes Estatísticos (Significância)</h2>
             <div class='card'>{ttest_html_fragments if ttest_html_fragments else "Nenhum teste realizado."}</div>
 
-            <h2 class='section-title'>4. Convergência por Algoritmo</h2>
+            <h2 class='section-title'>5. Convergência por Algoritmo</h2>
             <div style='display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 20px;'>
         """)
         
         for exp in EXPERIMENTO_ATUAL:
-            # Adiciona o Link <a> ao redor da imagem para permitir Zoom
             f.write(f"""
             <div class='card'>
                 <h3>{exp['nome']}</h3>
                 <a href='convergencia_{exp['nome']}.png' target='_blank'>
                     <img src='convergencia_{exp['nome']}.png' style='width:100%; border:1px solid #334155;' title='Clique para ampliar'>
                 </a>
-                <p style='text-align:center; font-size:0.8rem; color:#94a3b8; margin-top:5px;'>(Clique na imagem para ampliar)</p>
             </div>
             """)
         

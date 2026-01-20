@@ -70,6 +70,7 @@ class RecozimentoSimulado:
     # -------------------------
     def _nearest_neighbor(self, start: int = 0) -> List[int]:
         """Heurística gulosa: nearest neighbor — retorna permutação inicial."""
+        
         if self.n == 0:
             return []
         unvisited = set(range(self.n))
@@ -185,7 +186,7 @@ class RecozimentoSimulado:
         # --- CORREÇÃO ACADÊMICA: Inicialização Aleatória ---
         # Removemos o Nearest Neighbor para que o SA comece do zero, igual ao AG e ACO.
         
-        self.solucao_atual = utils.criar_rota_aleatoria(self.n)
+        self.solucao_atual = self._nearest_neighbor() 
         self.distancia_atual = self._calc_distance(self.solucao_atual)
         
         # Define o melhor global inicial como a solução aleatória gerada

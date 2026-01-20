@@ -289,3 +289,29 @@ def gerar_relatorio_final(caminho_arquivo, sumario_global, kpis, explicacao_text
 
     with open(caminho_arquivo, "w", encoding="utf-8") as f:
         f.write(html)
+        
+def plotar_comparativo_tempo(tempos_dict, nome_arquivo="tempos.png"):
+    print(f"Gerando gráfico de tempo: {nome_arquivo}")
+    os.makedirs(os.path.dirname(nome_arquivo) or ".", exist_ok=True)
+
+    algoritmos = list(tempos_dict.keys())
+    tempos = list(tempos_dict.values())
+
+    plt.figure(figsize=(8, 5), dpi=100)
+    # Cria gráfico de barras
+    barras = plt.bar(algoritmos, tempos, color="#4ade80", alpha=0.8, edgecolor="#334155")
+
+    plt.title("Tempo Médio de Execução (s)")
+    plt.ylabel("Segundos")
+    plt.xticks(rotation=15)
+    
+    # Adiciona o valor em cima da barra
+    for barra in barras:
+        altura = barra.get_height()
+        plt.text(barra.get_x() + barra.get_width()/2., altura,
+                 f'{altura:.2f}s',
+                 ha='center', va='bottom', fontsize=9, fontweight='bold', color='#0f172a')
+
+    plt.tight_layout()
+    plt.savefig(nome_arquivo)
+    plt.close()
