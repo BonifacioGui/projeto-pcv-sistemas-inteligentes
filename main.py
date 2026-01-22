@@ -1,6 +1,6 @@
 """
-main.py - Versão Final para Entrega (Com Análise de Tempo/Escalabilidade)
-Orquestrador de Experimentos com Geração de Dashboard Profissional e Relatórios Detalhados.
+main.py - Versão CORRIGIDA (Automação Total)
+Correção: Adição de parâmetros obrigatórios (taxa_mutacao) nos experimentos de Crossover e Mutação.
 """
 import os
 import time
@@ -19,309 +19,215 @@ from colonia_formigas import ACO
 from recozimento_simulado import RecozimentoSimulado
 
 # ================================================================
-# 1. CONFIGURAÇÕES GERAIS
+# 1. CONFIGURAÇÕES - MODO ENTREGA ATIVADO
 # ================================================================
+MODO_TESTE = False 
 
-NUM_EXECUCOES     = 2      # Estatística robusta exige 30
-NUM_GERACOES      = 10     # Para dar tempo de convergir(500)
-TAMANHO_POPULACAO = 10      # Tamanho padrão da literatura (50)
+if MODO_TESTE:
+    print("\n⚠️  [MODO TESTE] Execução rápida (2 execuções, 10 gerações).")
+    NUM_EXECUCOES     = 2
+    NUM_GERACOES      = 10
+    TAMANHO_POPULACAO = 10
+else:
+    print("\n🚀 [MODO ENTREGA] Execução robusta (30 execuções, 500 gerações).")
+    print("Isso pode levar de 20 a 40 minutos. Vá tomar um café! ☕")
+    NUM_EXECUCOES     = 30      # Exigência do PDF
+    NUM_GERACOES      = 500     # Para garantir convergência
+    TAMANHO_POPULACAO = 50      # Padrão de literatura
 
-INSTANCIAS = [
-    "data/st70.tsp",
-    "data/eil101.tsp",
-    "data/ch130.tsp"
-]
-
+INSTANCIAS = ["data/st70.tsp", "data/eil101.tsp", "data/ch130.tsp"]
 EXECUTION_TIMESTAMP = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
 # ================================================================
-# 2. BANCO DE EXPERIMENTOS
+# 2. ROTEIRO DE EXECUÇÃO (Fases do Projeto)
 # ================================================================
+ROTEIRO_EXECUCAO = [
+    # Fase 1: Análise de Operadores de Crossover
+    {"chave": "crossover", "pasta": "1_analise_crossover", "titulo": "Comparativo de Crossover (OX vs PMX)"},
+    
+    # Fase 2: Análise de Operadores de Mutação
+    {"chave": "mutacao",   "pasta": "2_analise_mutacao",   "titulo": "Comparativo de Mutação (Swap vs Inversion)"},
+    
+    # Fase 3: Comparativo Final (AG vs ACO vs SA)
+    {"chave": "geral",     "pasta": "3_comparativo_final", "titulo": "Comparativo Final (Meta-heurísticas)"}
+]
+
+# CORREÇÃO AQUI: Adicionamos os parâmetros faltantes em todos os dicionários
 TODOS_EXPERIMENTOS = {
     "geral": [
-        {"nome": "AG_Padrao", "algoritmo": "AG", "params": {"taxa_mutacao": 0.01, "metodo_crossover": "ox"}},
-        {"nome": "AG_AltaMutacao", "algoritmo": "AG", "params": {"taxa_mutacao": 0.10, "metodo_crossover": "ox"}},
-        {"nome": "ACO_Padrao", "algoritmo": "ACO", "params": {"num_formigas": TAMANHO_POPULACAO, "alfa": 1.0, "beta": 2.5, "rho": 0.1}},
-        {"nome": "SA_Padrao", "algoritmo": "SA", "params": {"temp_inicial": 1000, "cooling_rate": 0.995}}
-    ],
-    "selecao": [
-        {"nome": "AG_Torneio", "algoritmo": "AG", "params": {"metodo_selecao": "torneio"}},
-        {"nome": "AG_Roleta", "algoritmo": "AG", "params": {"metodo_selecao": "roleta"}},
+        {"nome": "AG_Final", "algoritmo": "AG", "params": {"taxa_mutacao": 0.05, "metodo_crossover": "ox", "metodo_mutacao": "inversion"}},
+        {"nome": "ACO_Final", "algoritmo": "ACO", "params": {"num_formigas": TAMANHO_POPULACAO, "alfa": 1.0, "beta": 2.5, "rho": 0.1}},
+        {"nome": "SA_Final", "algoritmo": "SA", "params": {"temp_inicial": 1000, "cooling_rate": 0.995}}
     ],
     "mutacao": [
-        {"nome": "AG_Troca", "algoritmo": "AG", "params": {"metodo_mutacao": "swap"}},
-        {"nome": "AG_Inversao", "algoritmo": "AG", "params": {"metodo_mutacao": "inversion"}},
-    ],
-    "elitismo": [
-        {"nome": "AG_Elitismo_0", "algoritmo": "AG", "params": {"taxa_elitismo": 0.0}},
-        {"nome": "AG_Elitismo_10", "algoritmo": "AG", "params": {"taxa_elitismo": 0.1}},
+        # Variando Mutação, mas fixando Crossover (OX) e Taxa (5%)
+        {"nome": "AG_Swap", "algoritmo": "AG", "params": {"metodo_mutacao": "swap", "taxa_mutacao": 0.05, "metodo_crossover": "ox"}},
+        {"nome": "AG_Inversion", "algoritmo": "AG", "params": {"metodo_mutacao": "inversion", "taxa_mutacao": 0.05, "metodo_crossover": "ox"}},
     ],
     "crossover": [
-        {"nome": "AG_OX", "algoritmo": "AG", "params": {"metodo_crossover": "ox"}},
-        {"nome": "AG_PMX", "algoritmo": "AG", "params": {"metodo_crossover": "pmx"}},
+        # Variando Crossover, mas fixando Mutação (Inversion) e Taxa (5%)
+        {"nome": "AG_OX", "algoritmo": "AG", "params": {"metodo_crossover": "ox", "taxa_mutacao": 0.05, "metodo_mutacao": "inversion"}},
+        {"nome": "AG_PMX", "algoritmo": "AG", "params": {"metodo_crossover": "pmx", "taxa_mutacao": 0.05, "metodo_mutacao": "inversion"}},
     ]
 }
 
-# SELETOR
-CHAVE_ESCOLHIDA = "geral"
-EXPERIMENTO_ATUAL = TODOS_EXPERIMENTOS.get(CHAVE_ESCOLHIDA, TODOS_EXPERIMENTOS["geral"])
-
-# ================================================================
-# 3. PREPARAÇÃO
-# ================================================================
 def garantir_pasta(p):
     if not os.path.exists(p): os.makedirs(p)
-garantir_pasta("resultados")
 
 # ================================================================
-# 4. EXECUÇÃO PRINCIPAL
+# 3. LOOP PRINCIPAL (Automático)
 # ================================================================
-resultados_globais = {}
-sumario_global = {}
 
-print(f"\n>>> INICIANDO BATERIA: {CHAVE_ESCOLHIDA.upper()} <<<\n")
+print("\n>>> INICIANDO AUTOMAÇÃO TOTAL DO PROJETO (MODO REAL) <<<")
+print(f"Baterias agendadas: {[b['chave'] for b in ROTEIRO_EXECUCAO]}")
 
-for caminho in INSTANCIAS:
-    nome_instancia = os.path.basename(caminho).split(".")[0]
-    pasta_saida = f"resultados/{nome_instancia}"
-    garantir_pasta(pasta_saida)
+for fase in ROTEIRO_EXECUCAO:
+    CHAVE_ATUAL = fase["chave"]
+    PASTA_FASE = f"resultados/{fase['pasta']}"
+    TITULO_FASE = fase["titulo"]
+    EXPERIMENTOS_DA_VEZ = TODOS_EXPERIMENTOS.get(CHAVE_ATUAL)
 
-    print(f"\n=== Rodando Instância: {nome_instancia} ===")
-    try:
-        cidades = parser_tsplib.carregar_cidades(caminho)
-        dist_matrix = utils.calcular_matriz_distancias(cidades)
-    except Exception as e:
-        print(f"Erro ao carregar {caminho}: {e}")
-        continue
+    print(f"\n" + "="*60)
+    print(f"▶️  INICIANDO FASE: {TITULO_FASE}")
+    print(f"📂 Salvando em: {PASTA_FASE}")
+    print("="*60)
 
-    resultados_boxplot_instancia = {}
-    resultados_tempos_instancia = {}  # <--- [NOVO] Dicionário para guardar tempos
+    garantir_pasta(PASTA_FASE)
     
-    melhor_global_dist = float("inf")
-    melhor_global_alg = "N/A"
-    melhor_global_rota_obj = None 
-    ttest_html_fragments = "" 
+    # Variáveis para o Dashboard desta Fase
+    sumario_global_fase = {}
+    resultados_globais_fase = {}
 
-    for exp in EXPERIMENTO_ATUAL:
-        nome_exp = exp["nome"]
-        alg = exp["algoritmo"]
-        params = exp["params"]
-        
-        print(f" -> Executando {nome_exp} ({alg}) ... ", end="")
-        
-        dists = []
-        tempos = []
-        hist_melhores = []
-        hist_medias = []
+    for caminho in INSTANCIAS:
+        nome_instancia = os.path.basename(caminho).split(".")[0]
+        pasta_saida_instancia = f"{PASTA_FASE}/{nome_instancia}"
+        garantir_pasta(pasta_saida_instancia)
 
-        for _ in range(NUM_EXECUCOES):
-            inicio = time.perf_counter()
+        print(f"\n  Processando Instância: {nome_instancia} ...")
+        
+        try:
+            cidades = parser_tsplib.carregar_cidades(caminho)
+            dist_matrix = utils.calcular_matriz_distancias(cidades)
+        except Exception as e:
+            print(f"  Erro ao carregar {caminho}: {e}")
+            continue
+
+        resultados_boxplot = {}
+        resultados_tempos = {}
+        melhor_dist_inst = float("inf")
+        melhor_alg_inst = "N/A"
+        melhor_rota_obj_inst = None
+        ttest_html = ""
+
+        # --- LOOP DOS ALGORITMOS ---
+        for exp in EXPERIMENTOS_DA_VEZ:
+            nome_exp = exp["nome"]
+            alg = exp["algoritmo"]
+            params = exp["params"]
             
-            if alg == "AG":
-                modelo = AlgoritmoGenetico(cidades, dist_matrix=dist_matrix, **params, num_geracoes=NUM_GERACOES, tamanho_populacao=TAMANHO_POPULACAO)
-                res = modelo.executar()
-                dist_atual = res.distancia
-                rota_atual = res.rota
-                hist_melhores.append(modelo.historico_melhores)
-                hist_medias.append(modelo.historico_medias)
-            elif alg == "ACO":
-                modelo = ACO(cidades, **params, num_iteracoes=NUM_GERACOES)
-                rota_atual, dist_atual = modelo.executar()
-                hist_melhores.append(modelo.historico_melhores)
-            elif alg == "SA":
-                modelo = RecozimentoSimulado(cidades, dist_matrix=dist_matrix, **params, max_iterations=NUM_GERACOES*TAMANHO_POPULACAO)
-                rota_atual, dist_atual = modelo.executar()
-                hist_melhores.append(modelo.historico_melhores)
-
-            fim = time.perf_counter()
-            dists.append(dist_atual)
-            tempos.append(fim - inicio)
-
-            # Verifica se essa execução específica foi a melhor de todas da instância
-            if dist_atual < melhor_global_dist:
-                melhor_global_dist = dist_atual
-                melhor_global_alg = nome_exp
-                melhor_global_rota_obj = rota_atual
-        
-        # --- CÁLCULO DE TEMPO MÉDIO (PARA ANÁLISE DE ESCALABILIDADE) ---
-        tempo_medio = np.mean(tempos)
-        resultados_tempos_instancia[nome_exp] = tempo_medio
-        
-        print(f"OK (Média Dist: {np.mean(dists):.2f} | Tempo: {tempo_medio:.4f}s)")
-        
-        # Salva dados JSON
-        with open(f"{pasta_saida}/{nome_exp}.json", "w") as jf:
-            json.dump({"distancias": dists, "tempos": tempos}, jf, indent=2)
-
-        resultados_boxplot_instancia[nome_exp] = dists
-        media_pop = hist_medias if alg == "AG" else None
-        
-        # Gera Gráfico de Convergência
-        visualizacao.plotar_convergencia(
-            hist_melhores, 
-            media_pop, 
-            f"{pasta_saida}/convergencia_{nome_exp}.png"
-        )
-
-    # --- FIM DO LOOP DE ALGORITMOS PARA ESTA INSTÂNCIA ---
-
-    # 1. Gera Boxplot da Instância
-    visualizacao.plotar_boxplot_comparativo(
-        resultados_boxplot_instancia, 
-        f"{pasta_saida}/boxplot_{nome_instancia}.png"
-    )
-    
-    # 2. Gera Gráfico da Melhor Rota
-    if melhor_global_rota_obj:
-        visualizacao.plotar_rota(
-            melhor_global_rota_obj, 
-            cidades, 
-            f"{pasta_saida}/melhor_rota_{nome_instancia}.png"
-        )
-
-    # 3. Gera CSV de Resumo (AGORA COM TEMPO)
-    with open(f"{pasta_saida}/resumo_{nome_instancia}.csv", "w", newline="") as csvfile:
-        writer = csv.writer(csvfile)
-        # Cabeçalho atualizado
-        writer.writerow(["Algoritmo", "Media Dist", "Desvio", "Min", "Max", "Tempo Medio (s)"])
-        
-        for alg_nome, dados in resultados_boxplot_instancia.items():
-            t_med = resultados_tempos_instancia[alg_nome] # Recupera o tempo salvo
-            writer.writerow([
-                alg_nome, 
-                f"{np.mean(dados):.2f}", 
-                f"{np.std(dados):.2f}", 
-                f"{np.min(dados):.2f}", 
-                f"{np.max(dados):.2f}",
-                f"{t_med:.4f}" # Escreve o tempo
-            ])
-
-    # 4. Calcula Testes T-Student
-    chaves = list(resultados_boxplot_instancia.keys())
-    for i in range(len(chaves)):
-        for j in range(i + 1, len(chaves)):
-            alg_a = chaves[i]
-            alg_b = chaves[j]
-            try:
-                s, p = stats.ttest_ind(resultados_boxplot_instancia[alg_a], resultados_boxplot_instancia[alg_b], equal_var=False)
-                cor = "var(--success)" if p < 0.05 else "var(--text-muted)"
-                sig = "SIM" if p < 0.05 else "NÃO"
-                ttest_html_fragments += f"<p><b>{alg_a} vs {alg_b}</b>: p-value={p:.4e} <span style='color:{cor}; font-weight:bold'>({sig})</span></p>"
-            except:
-                ttest_html_fragments += f"<p><b>{alg_a} vs {alg_b}</b>: Dados idênticos (sem variância).</p>"
-    # 4.1 Gera Gráfico de Tempo (Isso já estava certo, mantenha)
-    visualizacao.plotar_comparativo_tempo(
-        resultados_tempos_instancia, 
-        f"{pasta_saida}/tempos_{nome_instancia}.png"
-    )
-
-    # 5. Gera Relatório HTML Individual (CORRIGIDO: Agora mostra o gráfico de tempo)
-    with open(f"{pasta_saida}/relatorio_{nome_instancia}.html", "w", encoding="utf-8") as f:
-        f.write(f"""
-        <html><head><link rel='stylesheet' href='../style.css'></head><body>
-        <div class='container'>
-            <header><h1>Detalhes: {nome_instancia.upper()}</h1><div class='timestamp'>Bateria: {CHAVE_ESCOLHIDA}</div></header>
+            print(f"    -> {nome_exp} ({alg})... ", end="")
             
-            <h2 class='section-title'>1. Melhor Resultado</h2>
-            <div class='card'>
-                <p>Melhor Algoritmo: <strong>{melhor_global_alg}</strong></p>
-                <p>Distância: <strong>{melhor_global_dist:.2f}</strong></p>
-                <a href='melhor_rota_{nome_instancia}.png' target='_blank'>
-                    <img src='melhor_rota_{nome_instancia}.png' title='Clique para ampliar'>
-                </a>
-            </div>
+            dists = []
+            tempos = []
+            hist_melhores = []
+            hist_medias = []
 
-            <h2 class='section-title'>2. Desempenho Computacional (Tempo)</h2>
-            <div class='card'>
-                <p>Comparativo de velocidade média para convergir:</p>
-                <a href='tempos_{nome_instancia}.png' target='_blank'>
-                    <img src='tempos_{nome_instancia}.png' style='max-width: 600px;' title='Clique para ampliar'>
-                </a>
-            </div>
+            for _ in range(NUM_EXECUCOES):
+                inicio = time.perf_counter()
+                if alg == "AG":
+                    modelo = AlgoritmoGenetico(cidades, dist_matrix=dist_matrix, **params, num_geracoes=NUM_GERACOES, tamanho_populacao=TAMANHO_POPULACAO)
+                    res = modelo.executar()
+                    hist_medias.append(modelo.historico_medias)
+                    d_atual, r_atual = res.distancia, res.rota
+                    hist_melhores.append(modelo.historico_melhores)
+                elif alg == "ACO":
+                    modelo = ACO(cidades, **params, num_iteracoes=NUM_GERACOES)
+                    r_atual, d_atual = modelo.executar()
+                    hist_melhores.append(modelo.historico_melhores)
+                elif alg == "SA":
+                    modelo = RecozimentoSimulado(cidades, dist_matrix=dist_matrix, **params, max_iterations=NUM_GERACOES*TAMANHO_POPULACAO)
+                    r_atual, d_atual = modelo.executar()
+                    hist_melhores.append(modelo.historico_melhores)
+                
+                tempos.append(time.perf_counter() - inicio)
+                dists.append(d_atual)
 
-            <h2 class='section-title'>3. Comparativo de Qualidade (Boxplot)</h2>
-            <div class='card'>
-                <a href='boxplot_{nome_instancia}.png' target='_blank'>
-                    <img src='boxplot_{nome_instancia}.png' title='Clique para ampliar'>
-                </a>
-            </div>
+                if d_atual < melhor_dist_inst:
+                    melhor_dist_inst = d_atual
+                    melhor_alg_inst = nome_exp
+                    melhor_rota_obj_inst = r_atual
 
-            <h2 class='section-title'>4. Testes Estatísticos (Significância)</h2>
-            <div class='card'>{ttest_html_fragments if ttest_html_fragments else "Nenhum teste realizado."}</div>
+            # Estatísticas do Algoritmo
+            t_medio = np.mean(tempos)
+            resultados_tempos[nome_exp] = t_medio
+            resultados_boxplot[nome_exp] = dists
+            print(f"OK ({t_medio:.2f}s)")
 
-            <h2 class='section-title'>5. Convergência por Algoritmo</h2>
-            <div style='display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 20px;'>
-        """)
+            # Gráfico de Convergência Individual
+            visualizacao.plotar_convergencia(
+                hist_melhores, 
+                hist_medias if alg == "AG" else None, 
+                f"{pasta_saida_instancia}/convergencia_{nome_exp}.png"
+            )
+
+        # --- FIM ALGORITMOS: GERAÇÃO DE RELATÓRIOS DA INSTÂNCIA ---
         
-        for exp in EXPERIMENTO_ATUAL:
+        # 1. Boxplot e Tempos
+        visualizacao.plotar_boxplot_comparativo(resultados_boxplot, f"{pasta_saida_instancia}/boxplot_{nome_instancia}.png")
+        visualizacao.plotar_comparativo_tempo(resultados_tempos, f"{pasta_saida_instancia}/tempos_{nome_instancia}.png")
+        
+        # 2. Melhor Rota
+        if melhor_rota_obj_inst:
+            visualizacao.plotar_rota(melhor_rota_obj_inst, cidades, f"{pasta_saida_instancia}/melhor_rota_{nome_instancia}.png")
+
+        # 3. CSV
+        with open(f"{pasta_saida_instancia}/resumo_{nome_instancia}.csv", "w", newline="") as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(["Algoritmo", "Media", "Desvio", "Min", "Max", "Tempo(s)"])
+            for nm, dd in resultados_boxplot.items():
+                writer.writerow([nm, f"{np.mean(dd):.2f}", f"{np.std(dd):.2f}", f"{np.min(dd):.2f}", f"{np.max(dd):.2f}", f"{resultados_tempos[nm]:.4f}"])
+
+        # 4. T-Tests
+        chaves = list(resultados_boxplot.keys())
+        for i in range(len(chaves)):
+            for j in range(i + 1, len(chaves)):
+                a, b = chaves[i], chaves[j]
+                try:
+                    s, p = stats.ttest_ind(resultados_boxplot[a], resultados_boxplot[b], equal_var=False)
+                    color = "var(--success)" if p < 0.05 else "var(--text-muted)"
+                    ttest_html += f"<p><b>{a} vs {b}</b>: p={p:.4e} <span style='color:{color}'>({'SIG' if p<0.05 else 'NÃO'})</span></p>"
+                except: ttest_html += f"<p>{a} vs {b}: Sem variância</p>"
+
+        # 5. HTML Individual da Instância
+        with open(f"{pasta_saida_instancia}/relatorio_{nome_instancia}.html", "w", encoding="utf-8") as f:
             f.write(f"""
-            <div class='card'>
-                <h3>{exp['nome']}</h3>
-                <a href='convergencia_{exp['nome']}.png' target='_blank'>
-                    <img src='convergencia_{exp['nome']}.png' style='width:100%; border:1px solid #334155;' title='Clique para ampliar'>
-                </a>
-            </div>
+            <html><head><link rel='stylesheet' href='../../style.css'></head><body>
+            <div class='container'><header><h1>{nome_instancia.upper()} - {TITULO_FASE}</h1></header>
+            <h2 class='section-title'>1. Vencedor: {melhor_alg_inst} ({melhor_dist_inst:.2f})</h2>
+            <div class='card'><img src='melhor_rota_{nome_instancia}.png'></div>
+            <h2 class='section-title'>2. Tempos</h2><div class='card'><img src='tempos_{nome_instancia}.png'></div>
+            <h2 class='section-title'>3. Estabilidade</h2><div class='card'><img src='boxplot_{nome_instancia}.png'></div>
+            <h2 class='section-title'>4. Estatística</h2><div class='card'>{ttest_html}</div>
+            <h2 class='section-title'>5. Convergências</h2><div style='display:grid;grid-template-columns:1fr 1fr;gap:20px'>
             """)
-        
-        f.write("</div></div></body></html>")
+            for exp in EXPERIMENTOS_DA_VEZ:
+                f.write(f"<div><h3>{exp['nome']}</h3><img src='convergencia_{exp['nome']}.png'></div>")
+            f.write("</div></div></body></html>")
 
-    # Atualiza Globais para o Dashboard Final
-    sumario_global[nome_instancia] = {"melhor_dist": melhor_global_dist, "melhor_alg": melhor_global_alg}
-    for k, v in resultados_boxplot_instancia.items():
-        resultados_globais[f"{nome_instancia}_{k}"] = v
+        # Atualiza globais da fase
+        sumario_global_fase[nome_instancia] = {"melhor_dist": melhor_dist_inst, "melhor_alg": melhor_alg_inst}
+        for k, v in resultados_boxplot.items(): resultados_globais_fase[f"{nome_instancia}_{k}"] = v
 
-# ================================================================
-# 5. DASHBOARD GLOBAL
-# ================================================================
+    # --- FIM DA FASE: GERA DASHBOARD DA BATERIA ---
+    visualizacao.plotar_boxplot_comparativo(resultados_globais_fase, f"{PASTA_FASE}/boxplot_geral_fase.png")
+    
+    if sumario_global_fase:
+        lst = [v['melhor_alg'] for v in sumario_global_fase.values()]
+        best_of_phase = max(set(lst), key=lst.count) if lst else "N/A"
+    else: best_of_phase = "N/A"
 
-# 1. Gera gráfico global
-visualizacao.plotar_boxplot_comparativo(resultados_globais, "resultados/boxplot_global.png")
+    kpis = {"melhor_alg": best_of_phase, "melhor_dist": 0, "total_exec": NUM_EXECUCOES*len(INSTANCIAS)*len(EXPERIMENTOS_DA_VEZ)}
+    visualizacao.gerar_relatorio_final(f"{PASTA_FASE}/index.html", sumario_global_fase, kpis, f"Fase concluída: {TITULO_FASE}")
+    print(f"✅ FASE CONCLUÍDA: Relatório em {PASTA_FASE}/index.html")
 
-# 2. Prepara os dados para os KPIs
-if sumario_global:
-    lista_vencedores = [i['melhor_alg'] for i in sumario_global.values()]
-    melhor_alg = max(set(lista_vencedores), key=lista_vencedores.count)
-    melhor_dist = min([i['melhor_dist'] for i in sumario_global.values()])
-else:
-    melhor_alg, melhor_dist = "N/A", 0.0
-
-kpis = {
-    "melhor_alg": melhor_alg,
-    "melhor_dist": melhor_dist,
-    "total_exec": NUM_EXECUCOES * len(EXPERIMENTO_ATUAL) * len(INSTANCIAS)
-}
-
-# 3. LÓGICA DINÂMICA DE CONCLUSÃO
-if "SA" in melhor_alg:
-    analise_vencedor = """
-    O <strong>Recozimento Simulado (SA)</strong> demonstrou ser a estratégia mais robusta nesta bateria. 
-    Sua capacidade de escapar de mínimos locais (aceitando pioras temporárias) foi decisiva nas instâncias maiores.
-    """
-elif "ACO" in melhor_alg:
-    analise_vencedor = """
-    A <strong>Colônia de Formigas (ACO)</strong> obteve o melhor desempenho geral. 
-    A abordagem construtiva guiada por feromônios convergiu rapidamente para soluções de alta qualidade.
-    """
-elif "AG" in melhor_alg:
-    analise_vencedor = """
-    O <strong>Algoritmo Genético (AG)</strong> superou as outras abordagens. 
-    Isso valida a eficácia dos operadores de crossover e a manutenção da diversidade genética.
-    """
-else:
-    analise_vencedor = """
-    Os resultados mostram um <strong>equilíbrio competitivo</strong>. 
-    Nenhum algoritmo dominou completamente todas as instâncias.
-    """
-
-minha_conclusao = f"""
-<strong>Resultado da Bateria:</strong><br>
-O algoritmo com maior número de vitórias foi o <span style="color:var(--accent); font-weight:bold;">{melhor_alg}</span>, 
-atingindo a melhor distância absoluta de <b>{melhor_dist:.2f}</b>.<br><br>
-{analise_vencedor}<br>
-<small style="color:var(--text-muted);">Relatório gerado automaticamente em {EXECUTION_TIMESTAMP}</small>
-"""
-
-# 4. Chama a função geradora no visualizacao.py
-visualizacao.gerar_relatorio_final("resultados/index.html", sumario_global, kpis, minha_conclusao)
-
-print("\n=== Dashboard Gerado com Sucesso! ===")
+print("\n🎉 AUTOMAÇÃO TOTAL FINALIZADA COM SUCESSO! Pode abrir os relatórios nas pastas numeradas.")

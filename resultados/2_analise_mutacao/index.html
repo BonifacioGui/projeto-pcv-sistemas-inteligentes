@@ -1,0 +1,75 @@
+
+    <!DOCTYPE html>
+    <html lang="pt-br">
+    <head>
+        <meta charset="UTF-8">
+        <title>TSP Dashboard</title>
+        <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+        <div class="container">
+            <header>
+                <h1>Dashboard de Resultados</h1>
+                <div class="timestamp">Relatório Automático</div>
+            </header>
+
+            <div class="kpi-grid">
+                <div class="kpi-card"><div class="kpi-label">Melhor Algoritmo</div><div class="kpi-value">AG_Inversion</div></div>
+                <div class="kpi-card"><div class="kpi-label">Melhor Distância</div><div class="kpi-value">0.00</div></div>
+                <div class="kpi-card"><div class="kpi-label">Total Execuções</div><div class="kpi-value">180</div></div>
+            </div>
+
+            <h2 class="section-title">1. Análise e Conclusões</h2>
+            <div class="card" style="border-left: 4px solid var(--success);">
+                <h3>Interpretação dos Resultados</h3>
+                <p style="font-size: 1.1rem; color: var(--text-main); margin-top: 10px;">
+                    Fase concluída: Comparativo de Mutação (Swap vs Inversion)
+                </p>
+            </div>
+
+            <h2 class="section-title">2. Comparativo Visual</h2>
+            <div class="card">
+                <img src="boxplot_global.png">
+                
+                <div class="legenda-didatica">
+                    <strong>Como ler este gráfico (Boxplot):</strong><br>
+                    Este gráfico resume a estabilidade de cada algoritmo em 30 execuções.<br>
+                    <ul>
+                        <li><strong>A Caixa Colorida:</strong> Representa onde caíram 50% dos resultados mais comuns. Caixas "achatadas" indicam alta estabilidade.</li>
+                        <li><strong>O Ponto Vermelho:</strong> É a média de todas as execuções.</li>
+                        <li><strong>Posição Vertical:</strong> Quanto mais baixo no gráfico, melhor foi a solução (menor distância percorrida).</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h2 class="section-title">3. Detalhamento por Instância</h2>
+            <div class="card">
+                <table>
+                    <thead><tr><th>Instância</th><th>Melhor Distância</th><th>Vencedor</th><th>Detalhes</th></tr></thead>
+                    <tbody>
+    
+        <tr>
+            <td>ST70</td>
+            <td>712.60</td>
+            <td style="color:var(--accent)">AG_Inversion</td>
+            <td><a href="st70/relatorio_st70.html" class="btn" target="_blank">Abrir Relatório</a></td>
+        </tr>
+        
+        <tr>
+            <td>EIL101</td>
+            <td>694.08</td>
+            <td style="color:var(--accent)">AG_Inversion</td>
+            <td><a href="eil101/relatorio_eil101.html" class="btn" target="_blank">Abrir Relatório</a></td>
+        </tr>
+        
+        <tr>
+            <td>CH130</td>
+            <td>6976.69</td>
+            <td style="color:var(--accent)">AG_Inversion</td>
+            <td><a href="ch130/relatorio_ch130.html" class="btn" target="_blank">Abrir Relatório</a></td>
+        </tr>
+        </tbody></table>
+    <div class="legenda-didatica" style="margin-top:20px;">
+        Clique em <strong>'Abrir Relatório'</strong> para ver as curvas de convergência (velocidade de aprendizado) e a melhor rota desenhada para cada mapa.
+    </div>
+    </div></div></body></html>
