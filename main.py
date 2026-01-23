@@ -17,7 +17,7 @@ from colonia_formigas import ACO
 from recozimento_simulado import RecozimentoSimulado
 
 # ================= CONFIGURAÇÕES =================
-MODO_TESTE = True 
+MODO_TESTE = False 
 
 if MODO_TESTE:
     print("\n⚠️ [MODO TESTE] Rápido.")
