@@ -184,9 +184,9 @@ class RecozimentoSimulado:
         Executa o SA com Inicialização ALEATÓRIA (Academicamente Justo).
         """
         # --- CORREÇÃO ACADÊMICA: Inicialização Aleatória ---
-        # Removemos o Nearest Neighbor para que o SA comece do zero, igual ao AG e ACO.
+        # Agora usamos criar_rota_aleatoria para garantir que o SA comece do zero.
         
-        self.solucao_atual = self._nearest_neighbor() 
+        self.solucao_atual = utils.criar_rota_aleatoria(self.n)  # <--- CORRIGIDO
         self.distancia_atual = self._calc_distance(self.solucao_atual)
         
         # Define o melhor global inicial como a solução aleatória gerada
