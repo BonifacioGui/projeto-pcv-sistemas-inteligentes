@@ -4,63 +4,64 @@
 **Disciplina:** Sistemas Inteligentes  
 **Professora:** Alessandra Maranhão  
 
-## Descrição Geral do Projeto
+## 📝 Descrição Geral do Projeto
 
 Este projeto implementa e compara três metaheurísticas aplicadas ao Problema do Caixeiro Viajante (TSP) utilizando instâncias da TSPLIB. O objetivo é analisar o desempenho de cada técnica em termos de qualidade da solução, estabilidade, tempo de execução e convergência.
 
-O diferencial deste projeto é a execução em **5 Fases de Teste**, garantindo que os parâmetros (população, seleção, crossover, mutação) sejam escolhidos cientificamente antes do comparativo final.
+O grande diferencial deste trabalho é a **metodologia rigorosa de calibração**. O sistema executa automaticamente **9 baterias de testes (Fases 1 a 7 + sub-análises)** para ajustar cientificamente os parâmetros do Algoritmo Genético e da Colônia de Formigas antes do comparativo final.
 
 ### As metaheurísticas implementadas são:
-1.  **Algoritmo Genético (AG):** Com operadores calibrados (OX, PMX, Swap, Inversion).
-2.  **Otimização por Colônia de Formigas (ACO):** Baseado em feromônio e visibilidade.
-3.  **Recozimento Simulado (SA):** Utilizado como *baseline* comparativo.
-
-A execução é totalmente automatizada e produz relatórios estatísticos (HTML) e gráficos detalhados.
+1.  **Algoritmo Genético (AG):** Evolutivo, com calibração de população, seleção, crossover, mutação e elitismo.
+2.  **Otimização por Colônia de Formigas (ACO):** Baseado em enxame, com calibração de evaporação e número de agentes.
+3.  **Recozimento Simulado (SA):** Baseado em termodinâmica, utilizado como *baseline* comparativo com inicialização aleatória justa.
 
 ---
 
-## Funcionalidades Implementadas
+## ⚙️ Funcionalidades e Fases de Execução
 
-O sistema realiza automaticamente:
-* **Calibração Automática:** Executa testes preliminares para definir os melhores operadores do AG.
-* **Execução das instâncias:** `st70` (Pequena), `eil101` (Média) e `ch130` (Grande).
-* **Robustez Estatística:** 30 execuções independentes por algoritmo/cenário.
-* **Análise Completa:**
-    * Melhor Solução, Média e Desvio Padrão.
-    * Teste de Hipótese T-Student (para validar vitórias estatísticas).
-    * Tempo de execução computacional.
+O sistema (`main.py`) executa sequencialmente as seguintes análises:
 
-###  Saídas Geradas
-* **Gráficos:** Boxplot (Global e por Instância), Curvas de Convergência e Mapa da Melhor Rota.
-* **Relatórios:** Dashboard HTML completo com *Dark Mode* e tabelas de resultados.
-* **Arquivos:** CSVs de resumo e logs detalhados.
+* **Fase 1:** Calibração de População (50 vs 100).
+* **Fase 2:** Comparativo de Seleção (Torneio vs Roleta).
+* **Fase 3:** Comparativo de Crossover (OX vs PMX).
+* **Fase 3b:** Ajuste Fino de Taxa de Mutação.
+* **Fase 4:** Comparativo de Mutação (Swap vs Inversion).
+* **Fase 4b:** Impacto do Elitismo na convergência.
+* **Fase 6:** Calibração do ACO - Taxa de Evaporação (Rho).
+* **Fase 7:** Calibração do ACO - Tamanho do Enxame.
+* **Fase 5 (Final):** O grande comparativo entre os campeões (AG Otimizado vs ACO Otimizado vs SA).
+
+### 📊 Saídas Geradas
+* **Estatística:** Teste T-Student (p-value) para validar diferenças significativas.
+* **Visualização:** Boxplots globais, Curvas de Convergência e Mapas das melhores rotas.
+* **Relatórios:** Páginas HTML automáticas com *Dark Mode* para cada instância e fase.
 
 ---
 
-##  Estrutura do Projeto
+## 📂 Estrutura do Projeto
 
 ```text
 /
-│   main.py                  # Script principal (Orquestrador das 5 Fases)
+│   main.py                  # Orquestrador das 9 baterias de testes
 │   algoritmo_genetico.py    # Implementação da classe AG
 │   colonia_formigas.py      # Implementação da classe ACO
 │   recozimento_simulado.py  # Implementação da classe SA
-│   parser_tsplib.py         # Leitor de instâncias .tsp
-│   utils.py                 # Funções auxiliares (distância, rotas)
-│   visualizacao.py          # Gerador de gráficos e HTML
+│   visualizacao.py          # Gerador de gráficos e relatórios HTML
+│   utils.py                 # Funções auxiliares e métricas
 │
-├── data/                    # Instâncias do TSPLIB
-│   ├── st70.tsp
-│   ├── eil101.tsp
-│   └── ch130.tsp
+├── data/                    # Instâncias do TSPLIB (st70, eil101, ch130)
 │
-└── resultados/              # Gerado automaticamente
+└── resultados/              # Gerado automaticamente com todas as fases
     ├── 1_calibracao_parametros/
     ├── 2_analise_selecao/
     ├── 3_analise_crossover/
+    ├── 3b_analise_taxa_mutacao/
     ├── 4_analise_mutacao/
-    └── 5_comparativo_final/     # <--- Onde estão os resultados principais
-        ├── index.html           # Dashboard Global
+    ├── 4b_analise_elitismo/
+    ├── 6_calibracao_aco_rho/       # Calibração específica do ACO
+    ├── 7_calibracao_aco_formigas/  # Calibração específica do ACO
+    └── 5_comparativo_final/        # RESULTADOS FINAIS
+        ├── index.html              # Dashboard Global
         ├── boxplot_global.png
         ├── st70/
         │   ├── relatorio_st70.html
