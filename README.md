@@ -69,24 +69,24 @@ O sistema (`main.py`) executa sequencialmente as seguintes análises:
         │   └── ...
         ├── eil101/
         └── ch130/
-🚀 Como Executar
-Pré-requisitos
+#🚀 Como Executar
+**Pré-requisitos**
 Python 3.8 ou superior
 
-Bibliotecas: numpy, scipy, matplotlib
+**Bibliotecas:** numpy, scipy, matplotlib
 
-Para instalar as dependências:
+**Para instalar as dependências:**
 
 Bash
 pip install numpy scipy matplotlib
 Execução
-Basta rodar o script principal. Ele executará as 9 fases sequencialmente (pode levar algumas horas devido às 30 execuções):
+**Basta rodar o script principal. Ele executará as 9 fases sequencialmente (pode levar algumas horas devido às 30 execuções):**
 
 Bash
 python main.py
 Ao final, abra o arquivo resultados/5_comparativo_final/index.html para ver o dashboard completo.
 
-📚 Referências Acadêmicas
+#📚 Referências Acadêmicas**
 Dorigo, M. & Gambardella, L. M. Ant Colony System: A Cooperative Learning Approach to the Traveling Salesman Problem.
 
 Kirkpatrick, S. et al. Optimization by Simulated Annealing.
@@ -95,5 +95,5 @@ Holland, J. Adaptation in Natural and Artificial Systems.
 
 TSPLIB. A Library of Sample Instances for the TSP.
 
-📄 Licença
+#📄 Licença
 Este projeto foi desenvolvido para fins acadêmicos na disciplina de Sistemas Inteligentes.
