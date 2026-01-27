@@ -87,7 +87,7 @@ Bash
 python main.py
 Ao final, abra o arquivo resultados/5_comparativo_final/index.html para ver o dashboard completo.
 
-#📚 Referências Acadêmicas**
+# 📚 Referências Acadêmicas**
 Dorigo, M. & Gambardella, L. M. Ant Colony System: A Cooperative Learning Approach to the Traveling Salesman Problem.
 
 Kirkpatrick, S. et al. Optimization by Simulated Annealing.
@@ -96,5 +96,5 @@ Holland, J. Adaptation in Natural and Artificial Systems.
 
 TSPLIB. A Library of Sample Instances for the TSP.
 
-#📄 Licença
+# 📄 Licença
 Este projeto foi desenvolvido para fins acadêmicos na disciplina de Sistemas Inteligentes.
