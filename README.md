@@ -69,6 +69,7 @@ O sistema (`main.py`) executa sequencialmente as seguintes análises:
         │   └── ...
         ├── eil101/
         └── ch130/
+```
 #🚀 Como Executar
 **Pré-requisitos**
 Python 3.8 ou superior
