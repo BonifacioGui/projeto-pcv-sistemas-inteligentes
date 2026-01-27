@@ -1,11 +1,14 @@
 """
-main.py - VERSÃO CORRIGIDA (Bug 'taxa_mutacao' resolvido)
-Este script executa 5 FASES de testes cobrindo todos os requisitos.
+main.py - PROJETO FINAL COMPLETO: CAIXEIRO VIAJANTE
+Estruturado para cumprir todos os requisitos experimentais do Relatório Técnico.
+
+HISTÓRICO DE EXECUÇÃO:
+- Fases 1, 2, 3, 4A e 5: JÁ EXECUTADAS (Resultados preservados em 'resultados/')
+- Fases 3B, 4B, 6 e 7: ATIVAS NESTA EXECUÇÃO (Complementos exigidos)
 """
 import os
 import time
 import numpy as np
-from datetime import datetime
 from scipy import stats
 
 # Módulos do Projeto
@@ -17,26 +20,26 @@ from colonia_formigas import ACO
 from recozimento_simulado import RecozimentoSimulado
 
 # ==============================================================================
-# 1. CONFIGURAÇÕES DE EXECUÇÃO
+# 1. CONFIGURAÇÃO DE EXECUÇÃO
 # ==============================================================================
-MODO_TESTE = False  # <--- FALSE = Entrega Final (30 execuções). TRUE = Teste Rápido.
+# Mantenha False para a entrega final (30 execuções garantem a validade estatística)
+MODO_TESTE = False 
 
 if MODO_TESTE:
-    print("\n⚠️  ALERTA: MODO DE TESTE ATIVADO (Rápido: apenas 2 execuções)")
-    NUM_EXECUCOES     = 2
-    NUM_GERACOES      = 10
-    TAMANHO_POPULACAO_PADRAO = 10
+    print("\n⚠️  ALERTA: MODO DE TESTE (Rápido - Resultados não valem nota)")
+    NUM_EXECUCOES = 2
+    NUM_GERACOES = 10
+    TAM_POP_PADRAO = 10
 else:
-    print("\n🚀 MODO DE ENTREGA ATIVADO (Completo: 30 execuções estatísticas)")
-    NUM_EXECUCOES     = 30
-    NUM_GERACOES      = 500
-    TAMANHO_POPULACAO_PADRAO = 50
+    print("\n🚀 MODO DE ENTREGA (30 Execuções - Estatística Robusta)")
+    NUM_EXECUCOES = 30
+    NUM_GERACOES = 500
+    TAM_POP_PADRAO = 50
 
-# Instâncias do TSPLIB a serem testadas
 INSTANCIAS = ["data/st70.tsp", "data/eil101.tsp", "data/ch130.tsp"]
 
 # ==============================================================================
-# 2. FUNÇÕES AUXILIARES (Automação)
+# 2. FUNÇÕES DO SISTEMA (Motor de Execução)
 # ==============================================================================
 def garantir_pasta(caminho):
     if not os.path.exists(caminho):
@@ -53,7 +56,6 @@ def rodar_bateria(titulo_fase, pasta_fase, lista_experimentos):
     print(f"{'='*60}")
     
     garantir_pasta(f"resultados/{pasta_fase}")
-    
     sumario_global = {}
     resultados_raw_global = {}
 
@@ -74,30 +76,21 @@ def rodar_bateria(titulo_fase, pasta_fase, lista_experimentos):
 
         melhor_dist_instancia = float("inf")
         melhor_alg_instancia = "N/A"
-        melhor_rota_objeto = None
-        
         dados_boxplot = {}
         dados_tempos = {}
-        imagens_convergencia = []
+        historico_melhores_plot = []
 
         for exp in lista_experimentos:
             nome_exp = exp["nome"]
             tipo_alg = exp["algoritmo"]
-            params = exp["params"]
-            
-            # Ajuste dinâmico de população se necessário
-            pop_size = params.get("tamanho_populacao", TAMANHO_POPULACAO_PADRAO)
-            
-            # Prepara parâmetros limpos para o construtor
-            params_limpo = params.copy()
-            if "tamanho_populacao" in params_limpo:
-                del params_limpo["tamanho_populacao"]
+            params = exp["params"].copy()
+            pop_size = params.pop("tamanho_populacao", TAM_POP_PADRAO)
 
             lista_distancias = []
             lista_tempos = []
             historico_melhores = []
-            historico_medias = []
-
+            
+            # --- LOOP DE EXECUÇÕES (30x) ---
             for i in range(NUM_EXECUCOES):
                 passo_atual += 1
                 barra_progresso(passo_atual, total_passos, f"{nome_instancia} > {nome_exp}")
@@ -105,127 +98,104 @@ def rodar_bateria(titulo_fase, pasta_fase, lista_experimentos):
                 inicio = time.perf_counter()
                 
                 if tipo_alg == "AG":
-                    # Aqui passamos params_limpo que agora contém taxa_mutacao
-                    modelo = AlgoritmoGenetico(cidades, dist_matrix=matriz_dist, **params_limpo, 
+                    modelo = AlgoritmoGenetico(cidades, dist_matrix=matriz_dist, **params, 
                                              num_geracoes=NUM_GERACOES, tamanho_populacao=pop_size)
-                    resultado = modelo.executar()
-                    historico_medias.append(modelo.historico_medias)
+                    res = modelo.executar()
+                    dist_final = res.distancia
                     historico_melhores.append(modelo.historico_melhores)
-                    dist_final = resultado.distancia
-                    rota_final = resultado.rota
 
                 elif tipo_alg == "ACO":
-                    modelo = ACO(cidades, **params_limpo, num_iteracoes=NUM_GERACOES)
-                    rota_final, dist_final = modelo.executar()
-                    historico_melhores.append(modelo.historico_melhores)
-
-                elif tipo_alg == "SA":
-                    modelo = RecozimentoSimulado(cidades, dist_matrix=matriz_dist, **params_limpo, 
-                                               max_iterations=NUM_GERACOES*pop_size)
-                    rota_final, dist_final = modelo.executar()
+                    modelo = ACO(cidades, **params, num_iteracoes=NUM_GERACOES)
+                    _, dist_final = modelo.executar()
                     historico_melhores.append(modelo.historico_melhores)
                 
-                tempo_gasto = time.perf_counter() - inicio
-                lista_distancias.append(dist_final)
-                lista_tempos.append(tempo_gasto)
+                elif tipo_alg == "SA":
+                    modelo = RecozimentoSimulado(cidades, dist_matrix=matriz_dist, **params, 
+                                               max_iterations=NUM_GERACOES*pop_size)
+                    _, dist_final = modelo.executar()
 
+                lista_tempos.append(time.perf_counter() - inicio)
+                lista_distancias.append(dist_final)
+                
                 if dist_final < melhor_dist_instancia:
                     melhor_dist_instancia = dist_final
                     melhor_alg_instancia = nome_exp
-                    melhor_rota_objeto = rota_final
 
             dados_boxplot[nome_exp] = lista_distancias
             dados_tempos[nome_exp] = np.mean(lista_tempos)
             
-            arquivo_conv = f"convergencia_{nome_exp}.png"
-            visualizacao.plotar_convergencia(historico_melhores, historico_medias if tipo_alg=="AG" else None, 
-                                           f"{pasta_saida}/{arquivo_conv}")
-            imagens_convergencia.append({"nome": nome_exp, "arquivo": arquivo_conv})
+            # Gera gráfico de convergência para este experimento
+            visualizacao.plotar_convergencia(historico_melhores, None, f"{pasta_saida}/convergencia_{nome_exp}.png")
 
-        # --- GERAÇÃO DE RELATÓRIOS ---
+        # --- GERAÇÃO DE RELATÓRIOS DA INSTÂNCIA ---
         visualizacao.plotar_boxplot_comparativo(dados_boxplot, f"{pasta_saida}/boxplot_{nome_instancia}.png")
-        visualizacao.plotar_comparativo_tempo(dados_tempos, f"{pasta_saida}/tempos_{nome_instancia}.png")
         
-        if melhor_rota_objeto:
-            visualizacao.plotar_rota(melhor_rota_objeto, cidades, f"{pasta_saida}/melhor_rota_{nome_instancia}.png")
-
+        # Teste T Simplificado (apenas se houver 2 experimentos para comparar)
         html_stats = ""
         chaves = list(dados_boxplot.keys())
-        for i in range(len(chaves)):
-            for j in range(i+1, len(chaves)):
-                try:
-                    s, p = stats.ttest_ind(dados_boxplot[chaves[i]], dados_boxplot[chaves[j]], equal_var=False)
-                    cor = "var(--success)" if p < 0.05 else "var(--text-muted)"
-                    texto_sig = "Diferença Real" if p < 0.05 else "Empate"
-                    html_stats += f"<p><b>{chaves[i]} vs {chaves[j]}</b>: p={p:.4f} <span style='color:{cor}'>({texto_sig})</span></p>"
-                except:
-                    html_stats += f"<p>{chaves[i]} vs {chaves[j]}: Dados idênticos</p>"
+        if len(chaves) == 2:
+            try:
+                s, p = stats.ttest_ind(dados_boxplot[chaves[0]], dados_boxplot[chaves[1]], equal_var=False)
+                vencedor = chaves[0] if np.mean(dados_boxplot[chaves[0]]) < np.mean(dados_boxplot[chaves[1]]) else chaves[1]
+                html_stats += f"<p><b>Comparativo Estatístico:</b> {chaves[0]} vs {chaves[1]}<br>p-value: {p:.4f}<br>Vencedor Estatístico: {vencedor}</p>"
+            except: pass
 
-        imagens = {
-            "rota": f"melhor_rota_{nome_instancia}.png",
-            "tempos": f"tempos_{nome_instancia}.png",
-            "boxplot": f"boxplot_{nome_instancia}.png",
-            "convergencias": imagens_convergencia
-        }
-        visualizacao.gerar_relatorio_instancia(
-            f"{pasta_saida}/relatorio_{nome_instancia}.html",
-            nome_instancia, titulo_fase, melhor_alg_instancia, melhor_dist_instancia, html_stats, imagens
-        )
+        # HTML simples para não quebrar se faltar imagem
+        visualizacao.gerar_relatorio_instancia(f"{pasta_saida}/relatorio.html", nome_instancia, titulo_fase, melhor_alg_instancia, melhor_dist_instancia, html_stats, {"rota": "", "tempos": "", "boxplot": f"boxplot_{nome_instancia}.png", "convergencias": []})
+        
+        sumario_global[nome_instancia] = {"melhor": melhor_alg_instancia}
+        for k, v in dados_boxplot.items(): resultados_raw_global[f"{nome_instancia}_{k}"] = v
 
-        sumario_global[nome_instancia] = {"melhor_dist": melhor_dist_instancia, "melhor_alg": melhor_alg_instancia}
-        for k, v in dados_boxplot.items():
-            resultados_raw_global[f"{nome_instancia}_{k}"] = v
-
-    # --- DASHBOARD GLOBAL DA FASE ---
+    # Boxplot Global (Todas as instâncias lado a lado)
     visualizacao.plotar_boxplot_comparativo(resultados_raw_global, f"resultados/{pasta_fase}/boxplot_global.png")
-    
-    if sumario_global:
-        lista_vencedores = [v['melhor_alg'] for v in sumario_global.values()]
-        campeao_fase = max(set(lista_vencedores), key=lista_vencedores.count) if lista_vencedores else "N/A"
-        lista_distancias = [v['melhor_dist'] for v in sumario_global.values()]
-        recorde_fase = min(lista_distancias) if lista_distancias else 0.0
-    else:
-        campeao_fase = "N/A"; recorde_fase = 0.0
-
-    kpis = {"melhor_alg": campeao_fase, "melhor_dist": recorde_fase, "total_exec": total_passos}
-    visualizacao.gerar_relatorio_final(f"resultados/{pasta_fase}/index.html", sumario_global, kpis, titulo_fase)
-    print(f"\n✅ FASE CONCLUÍDA: {titulo_fase}")
-
+    print(f"\n✅ FASE CONCLUÍDA: {titulo_fase} (Verifique a pasta 'resultados/{pasta_fase}')")
 
 # ==============================================================================
-# 4. EXECUÇÃO DAS 5 FASES (CORRIGIDO)
+# 3. LISTA DE EXPERIMENTOS (Roteiro do Relatório Técnico)
 # ==============================================================================
-print("\n>>> INICIANDO SISTEMA DE BENCHMARKING (5 FASES) <<<")
+print("\n>>> EXECUÇÃO DE EXPERIMENTOS COMPLEMENTARES <<<")
 
-# FASE 1: Calibração (Já tinha taxa_mutacao, OK)
-rodar_bateria("Fase 1: Calibração de Parâmetros (População)", "1_calibracao_parametros", [
-    {"nome": "AG_Pop50",  "algoritmo": "AG", "params": {"tamanho_populacao": 50,  "taxa_mutacao": 0.05}},
-    {"nome": "AG_Pop100", "algoritmo": "AG", "params": {"tamanho_populacao": 100, "taxa_mutacao": 0.05}}
+# -------------------------------------------------------------------------
+# FASES JÁ EXECUTADAS (Mantidas como registro do trabalho realizado)
+# -------------------------------------------------------------------------
+# rodar_bateria("Fase 1: Calibração (População)", "1_calibracao_parametros", [...])
+# rodar_bateria("Fase 2: Comparativo de Seleção", "2_analise_selecao", [...])
+# rodar_bateria("Fase 3A: Tipo de Mutação", "4_analise_mutacao", [...]) # Nota: Pasta antiga nomeada como '4', mantido p/ histórico
+# rodar_bateria("Fase 5: Comparativo Final", "5_comparativo_final", [...])
+
+# -------------------------------------------------------------------------
+# FASES COMPLEMENTARES (RODANDO AGORA)
+# -------------------------------------------------------------------------
+
+# --- ANÁLISE 3B: TAXA DE MUTAÇÃO ---
+# Requisito PDF: "TAXA DE MUTAÇÃO 1% vs. 5%"
+rodar_bateria("Fase 3B: Taxa de Mutação (1% vs 5%)", "3b_analise_taxa_mutacao", [
+    {"nome": "AG_Mut_1%", "algoritmo": "AG", "params": {"taxa_mutacao": 0.01, "metodo_mutacao": "inversion"}},
+    {"nome": "AG_Mut_5%", "algoritmo": "AG", "params": {"taxa_mutacao": 0.05, "metodo_mutacao": "inversion"}}
 ])
 
-# FASE 2: Seleção (Adicionado taxa_mutacao: 0.05)
-rodar_bateria("Fase 2: Comparativo de Seleção", "2_analise_selecao", [
-    {"nome": "AG_Torneio", "algoritmo": "AG", "params": {"metodo_selecao": "torneio", "taxa_mutacao": 0.05}},
-    {"nome": "AG_Roleta",  "algoritmo": "AG", "params": {"metodo_selecao": "roleta",  "taxa_mutacao": 0.05}}
+# --- ANÁLISE 4B: ELITISMO ---
+# Requisito PDF: "SOMENTE FILHOS, ELITISMO 5%, ELITISMO 10%"
+rodar_bateria("Fase 4B: Impacto do Elitismo", "4b_analise_elitismo", [
+    {"nome": "AG_Sem_Elitismo", "algoritmo": "AG", "params": {"taxa_elitismo": 0.0,  "taxa_mutacao": 0.05}},
+    {"nome": "AG_Elitismo_5%",  "algoritmo": "AG", "params": {"taxa_elitismo": 0.05, "taxa_mutacao": 0.05}},
+    {"nome": "AG_Elitismo_10%", "algoritmo": "AG", "params": {"taxa_elitismo": 0.10, "taxa_mutacao": 0.05}}
 ])
 
-# FASE 3: Crossover (Adicionado taxa_mutacao: 0.05)
-rodar_bateria("Fase 3: Comparativo de Crossover", "3_analise_crossover", [
-    {"nome": "AG_OX",  "algoritmo": "AG", "params": {"metodo_crossover": "ox",  "metodo_selecao": "torneio", "taxa_mutacao": 0.05}},
-    {"nome": "AG_PMX", "algoritmo": "AG", "params": {"metodo_crossover": "pmx", "metodo_selecao": "torneio", "taxa_mutacao": 0.05}}
+# --- ANÁLISE 6: CALIBRAGEM ACO (Parâmetro 1) ---
+# Requisito PDF: "ANALISAR OPERADOR OU PARÂMETRO DO NOVO ALGORITMO"
+# Teste de Evaporação (Rho)
+rodar_bateria("Fase 6: Calibração ACO (Evaporação Rho)", "6_calibracao_aco_rho", [
+    {"nome": "ACO_Rho_0.5", "algoritmo": "ACO", "params": {"rho": 0.5, "num_formigas": 50}},
+    {"nome": "ACO_Rho_0.1", "algoritmo": "ACO", "params": {"rho": 0.1, "num_formigas": 50}}
 ])
 
-# FASE 4: Mutação (Adicionado taxa_mutacao: 0.05)
-rodar_bateria("Fase 4: Comparativo de Mutação", "4_analise_mutacao", [
-    {"nome": "AG_Swap",      "algoritmo": "AG", "params": {"metodo_mutacao": "swap",      "metodo_crossover": "ox", "taxa_mutacao": 0.05}},
-    {"nome": "AG_Inversion", "algoritmo": "AG", "params": {"metodo_mutacao": "inversion", "metodo_crossover": "ox", "taxa_mutacao": 0.05}}
+# --- ANÁLISE 7: CALIBRAGEM ACO (Parâmetro 2) ---
+# Requisito PDF: "ANALISAR OPERADOR OU PARÂMETRO DO NOVO ALGORITMO"
+# Teste de Tamanho da Colônia (Nº Formigas)
+rodar_bateria("Fase 7: Calibração ACO (Nº Formigas)", "7_calibracao_aco_formigas", [
+    {"nome": "ACO_20_Formigas", "algoritmo": "ACO", "params": {"num_formigas": 20, "rho": 0.1}},
+    {"nome": "ACO_50_Formigas", "algoritmo": "ACO", "params": {"num_formigas": 50, "rho": 0.1}}
 ])
 
-# FASE 5: Final (Já tinha, OK)
-rodar_bateria("Fase 5: Comparativo Final (Meta-heurísticas)", "5_comparativo_final", [
-    {"nome": "AG_Final",  "algoritmo": "AG",  "params": {"taxa_mutacao": 0.05, "metodo_crossover": "ox", "metodo_mutacao": "inversion"}},
-    {"nome": "ACO_Final", "algoritmo": "ACO", "params": {"num_formigas": TAMANHO_POPULACAO_PADRAO, "alfa": 1.0, "beta": 2.5, "rho": 0.1}},
-    {"nome": "SA_Final",  "algoritmo": "SA",  "params": {"temp_inicial": 1000, "cooling_rate": 0.995}}
-])
-
-print("\n🎉 PARABÉNS! TODOS OS REQUISITOS DO CHECKLIST FORAM ATENDIDOS.")
+print("\n🎉 EXECUÇÃO TOTAL CONCLUÍDA! Verifique os novos gráficos em 'resultados/'.")
